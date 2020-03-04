@@ -5,6 +5,7 @@ OBJCOPY	= objcopy
 CAT		= cat
 DD		= dd
 RM		= rm
+BOCHS	= bochs
 
 default : dogos.img
 
@@ -14,14 +15,14 @@ boot.bin : boot.asm
 dogos_head.bin : dogos_head.asm
 	$(NASM) -fbin dogos_head.asm -o dogos_head.bin
 
-dogos_func.o : dogos_func.asm
-	$(NASM) -fmacho dogos_func.asm -o dogos_func.o
+nasm_func.o : nasm_func.asm
+	$(NASM) -fmacho nasm_func.asm -o nasm_func.o
 
 dogos.o : dogos.c
-	$(GCC) -m32 -Os -Wall -c dogos.c -o dogos.o
+	$(GCC) -m32 -O0 -c dogos.c -o dogos.o
 
-dogos : dogos.o dogos_func.o
-	$(LD) dogos.o dogos_func.o -e _DogOS_main -o dogos
+dogos : dogos.o nasm_func.o
+	$(LD) dogos.o nasm_func.o -e _DogOS_main -o dogos
 
 dogos.bin : dogos
 	$(OBJCOPY) -O binary dogos dogos.bin
@@ -33,7 +34,12 @@ dogos.img : dogos.image
 	$(DD) if=/dev/zero of=dogos.img bs=512 count=2880
 	$(DD) if=dogos.image of=dogos.img conv=notrunc
 
-.PHONY : default clean
+
+.PHONY : default run clean
+
+run:
+	$(BOCHS) -q -f bochsrc
+
 clean: 
 	-$(RM) *.bin
 	-$(RM) *.o

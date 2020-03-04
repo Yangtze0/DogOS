@@ -11,7 +11,7 @@ section head align=16 vstart=0x00040000
     mov ecx,10*2*18*512/4
     cld
     rep movsd
-
+    
     jmp dword 0x0008:ENTRY
     
     align 16

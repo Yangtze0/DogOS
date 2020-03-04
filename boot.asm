@@ -14,16 +14,16 @@ section boot align=16 vstart=0x7c00
 	mov dx,[CORE+0x02]
 	mov bx,0x10
 	div bx
-	mov es,dx
-	mov bx,ax
+	mov es,ax
+	mov bx,dx
 
     mov dl,0	            ;0:A驱动器
-    mov ah,2                ;read
-    mov al,1                ;1
     mov ch,0                ;C
     mov dh,0                ;H
     mov cl,2                ;S
     read_loop:
+		mov ah,2            ;read
+    	mov al,1            ;1
         int 0x13
         mov si,es
         add si,0x20
@@ -43,7 +43,7 @@ section boot align=16 vstart=0x7c00
     ;设置显卡模式
     mov al,0x13     		;VGA图形模式，320*200*8位彩色模式，调色板模式
     mov ah,0x00
-    int 0x10        		;VRAM:0x000a0000~0x000affff
+    int 0x10        		;VRAM:0x000a0000~0x000af9ff
 
     ;Protect mode preparing...
 	mov ax,[GDTR+0x02]
