@@ -7,6 +7,7 @@
     GLOBAL  _io_in8, _io_in16, _io_in32
     GLOBAL  _io_out8, _io_out16, _io_out32
     GLOBAL  _io_load_eflags, _io_store_eflags
+    GLOBAL  _load_idtr
 
 section .text
 
@@ -73,5 +74,10 @@ _io_store_eflags:       ;   void io_store_eflags(int eflags);
     popfd
     ret
 
+_load_idtr:             ;   void load_idtr(int limit, int addr);
+    mov ax,[esp+4]
+    mov [esp+6],ax
+    lidt [esp+6]
+    ret
 
 

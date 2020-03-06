@@ -23,22 +23,22 @@ section boot align=16 vstart=0x7c00
     mov cl,2                ;S
     read_loop:
 		mov ah,2            ;read
-    	mov al,1            ;1
-        int 0x13
-        mov si,es
-        add si,0x20
-        mov es,si
-        inc cl
-        cmp cl,18
-        jbe read_loop
-        mov cl,1
-        inc dh
-        cmp dh,2
-        jb read_loop
-        mov dh,0
-        inc ch
-        cmp ch,CYLS
-        jb read_loop
+		mov al,1            ;1
+		int 0x13
+		mov si,es
+		add si,0x20
+		mov es,si
+		inc cl
+		cmp cl,18
+		jbe read_loop
+		mov cl,1
+		inc dh
+		cmp dh,2
+		jb read_loop
+		mov dh,0
+		inc ch
+		cmp ch,CYLS
+		jb read_loop
 
     ;设置显卡模式
     mov al,0x13     		;VGA图形模式，320*200*8位彩色模式，调色板模式
