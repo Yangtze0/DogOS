@@ -6,7 +6,7 @@ megs: 8
 romimage: file=/usr/local/share/bochs/BIOS-bochs-latest, options=fastboot
 vgaromimage: file=/usr/local/share/bochs/VGABIOS-lgpl-latest
 
-mouse: enabled=0
+mouse: enabled=1
 keyboard: keymap=/usr/local/share/bochs/keymaps/sdl2-pc-us.map
 
 floppya: 1_44=./dogos.img, status=inserted

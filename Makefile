@@ -1,5 +1,5 @@
 NASM	= nasm
-GCC		= gcc
+GCC		= gcc -m32 -O0
 LD		= ld
 OBJCOPY	= objcopy
 CAT		= cat
@@ -7,32 +7,31 @@ DD		= dd
 RM		= rm
 BOCHS	= bochs
 
+
 default : dogos.img
 
 
-boot.bin : boot.asm
-	$(NASM) -fbin boot.asm -o boot.bin
+# 模式规则
+%.bin : %.asm
+	$(NASM) -fbin $*.asm -o $*.bin
+
+%.o : %.asm
+	$(NASM) -fmacho $*.asm -o $*.o
+
+%.o : %.c dogos.h
+	$(GCC) -c $*.c -o $*.o
 
 
-dogos_head.bin : dogos_head.asm
-	$(NASM) -fbin dogos_head.asm -o dogos_head.bin
+# 基本规则
+OBJS =	dogos.o graphic.o dsctbl.o int.o	\
+		myfont.o nasm_func.o 
 
-myfont.o : myfont.asm
-	$(NASM) -fmacho myfont.asm -o myfont.o
-
-nasm_func.o : nasm_func.asm
-	$(NASM) -fmacho nasm_func.asm -o nasm_func.o
-
-dogos.o : dogos.c
-	$(GCC) -m32 -O0 -c dogos.c -o dogos.o
-
-dogos : dogos.o nasm_func.o myfont.o	# To be improved : __nl_symbol_ptr
-	$(LD) dogos.o nasm_func.o myfont.o -o dogos -e _DogOS_main	\
+dogos : $(OBJS)		# To be improved : __nl_symbol_ptr
+	$(LD) $(OBJS) -o dogos -e _DogOS_main	\
 		-macosx_version_min 10.11 -preload -image_base 0x00100000 
 
 dogos.bin : dogos
 	$(OBJCOPY) -O binary dogos dogos.bin
-
 
 dogos.image : boot.bin dogos_head.bin dogos.bin
 	$(CAT) boot.bin dogos_head.bin dogos.bin > dogos.image

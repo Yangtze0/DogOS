@@ -97,7 +97,7 @@ setup:
 
 CORE	dd 0x00040000
 GDTR	dw 0x0000
-		dd 0x00007e00
+		dd 0x00010000
 
 times 510-($-$$) db 0
 db 0x55,0xaa
