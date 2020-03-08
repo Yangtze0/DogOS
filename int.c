@@ -14,6 +14,8 @@
 #define PIC1_ICW3   0x00a1
 #define PIC1_ICW4   0x00a1
 
+#define PORT_KEYDAT 0x0060
+
 void init_pic(void) {
     io_out8(PIC0_IMR,   0xff);  // PCI0禁止所有中断
     io_out8(PIC1_IMR,   0xff);  // PCI1禁止所有中断
@@ -35,23 +37,22 @@ void init_pic(void) {
 	io_out8(PIC1_IMR,   0xef);  // 开启int2c 鼠标中断
 }
 
-void inthandler21(int *esp) {
-    putfonts8_asc(0, 0, COL8_FFFFFF, "INT 21 (IRQ-1) : PS/2 keyboard");
+struct FIFO8 KEYBOARD;
 
-	for (;;) {
-		io_hlt();
-	}
+void inthandler21(int *esp) {
+    io_out8(PIC0_OCW2, 0x61);   // 通知PIC0已经受理IRQ-01
+    fifo8_put(&KEYBOARD, io_in8(PORT_KEYDAT));
 }
 
 void inthandler27(int *esp) {
     io_out8(PIC0_OCW2, 0x67);
 }
 
-void inthandler2c(int *esp) {
-    putfonts8_asc(0, 0, COL8_FFFFFF, "INT 2C (IRQ-12) : PS/2 mouse");
+struct FIFO8 MOUSE;
 
-	for (;;) {
-		io_hlt();
-	}
+void inthandler2c(int *esp) {
+    io_out8(PIC1_OCW2, 0x64);   // 通知PIC1已经受理IRQ-12
+    io_out8(PIC0_OCW2, 0x62);   // 通知PIC0已经受理IRQ-02
+    fifo8_put(&MOUSE, io_in8(PORT_KEYDAT));
 }
 

@@ -83,7 +83,7 @@ void putfonts8_asc(int x, int y, unsigned char color, char *s) {
     }
 }
 
-void init_mouse_cursor8(char *mouse, unsigned char bc) {
+void init_mouse_cursor8(char *mouse) {
     static char cursor[16][16] = {
         "**************..",
         "*OOOOOOOOOOO*...",
@@ -114,7 +114,6 @@ void init_mouse_cursor8(char *mouse, unsigned char bc) {
                 mouse[y * 16 + x] = COL8_FFFFFF;
                 break;
             case '.':
-                mouse[y * 16 + x] = bc;
                 break;
             }
 		}

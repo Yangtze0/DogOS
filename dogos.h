@@ -3,7 +3,13 @@
 void io_hlt(void);
 void io_cli(void);
 void io_sti(void);
+void io_stihlt(void);
+int io_in8(int port);
+int io_in16(int port);
+int io_in32(int port);
 void io_out8(int port, int data);
+void io_out16(int port, int data);
+void io_out32(int port, int data);
 int io_load_eflags(void);
 void io_store_eflags(int eflags);
 void load_idtr(int limit, int addr);
@@ -35,7 +41,7 @@ void boxfill8(int x0, int y0, int x1, int y1, unsigned char color);
 void init_screen(void);
 void putfont8(int x, int y, unsigned char color, char *font);
 void putfonts8_asc(int x, int y, unsigned char color, char *s);
-void init_mouse_cursor8(char *mouse, unsigned char back_color);
+void init_mouse_cursor8(char *mouse);
 void putblock8_8(int x0, int y0, int sx, int sy, char *mouse);
 
 
@@ -49,9 +55,21 @@ struct GATE_DESCRIPTOR {
 void init_idt(void);
 void set_gatedesc(struct GATE_DESCRIPTOR *gd, int offset, int selector, int ar);
 
+
 /* int.c */
 void init_pic(void);
 void inthandler21(int *esp);
 void inthandler27(int *esp);
 void inthandler2c(int *esp);
 
+
+/* fifo.c */
+struct FIFO8 {
+    char *buf;
+    int r, w, size, free, flags;
+};
+
+void fifo8_init(struct FIFO8 *fifo, int size, char *buf);
+int fifo8_put(struct FIFO8 *fifo, unsigned char data);
+int fifo8_get(struct FIFO8 *fifo);
+int fifo8_status(struct FIFO8 *fifo);

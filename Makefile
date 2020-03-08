@@ -23,8 +23,8 @@ default : dogos.img
 
 
 # 基本规则
-OBJS =	dogos.o graphic.o dsctbl.o int.o	\
-		myfont.o nasm_func.o 
+OBJS =	dogos.o graphic.o dsctbl.o int.o fifo.o	\
+		nasm_func.o myfont.o
 
 dogos : $(OBJS)		# To be improved : __nl_symbol_ptr
 	$(LD) $(OBJS) -o dogos -e _DogOS_main	\
