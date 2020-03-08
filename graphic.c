@@ -114,6 +114,7 @@ void init_mouse_cursor8(char *mouse) {
                 mouse[y * 16 + x] = COL8_FFFFFF;
                 break;
             case '.':
+                mouse[y * 16 + x] = COL8_008484;
                 break;
             }
 		}

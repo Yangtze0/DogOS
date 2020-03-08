@@ -1,8 +1,6 @@
 
 #include "dogos.h"
 
-#define FLAGS_OVERRUN   0x0001
-
 void fifo8_init(struct FIFO8 *fifo, int size, char *buf) {
     fifo->size = size;
     fifo->buf = buf;
