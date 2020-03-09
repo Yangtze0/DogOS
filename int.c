@@ -22,7 +22,10 @@ void init_pic(void) {
 	io_out8(PIC1_IMR,   0xef);  // 开启int2c 鼠标中断
 }
 
+// inthandler21: keyboard.c
+
 void inthandler27(int *esp) {
     io_out8(PIC0_OCW2, 0x67);
 }
 
+// inthandler2c: mousu.c

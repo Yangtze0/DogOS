@@ -1,5 +1,5 @@
 NASM	= nasm
-GCC		= gcc -m32 -O0
+GCC		= gcc -m32
 LD		= ld
 OBJCOPY	= objcopy
 CAT		= cat
@@ -23,7 +23,7 @@ default : dogos.img
 
 
 # 基本规则
-OBJS =	dogos.o graphic.o dsctbl.o int.o fifo.o	\
+OBJS =	dogos.o graphic.o dsctbl.o int.o fifo.o	memory.o \
 		mouse.o keyboard.o nasm_func.o myfont.o
 
 dogos : $(OBJS)		# To be improved : __nl_symbol_ptr

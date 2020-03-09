@@ -5,16 +5,22 @@
 #include "dogos.h"
 
 extern struct FIFO8 KEYBOARD, MOUSE;
+extern struct MEMMAN MEMORY;
+
+void c2hex(char *s, unsigned char data);
 
 void DogOS_main(void) {
+    // 开放中断
     init_idt();
     init_pic();
     io_sti();
 
-    init_keyboard();
+    // 初始化图形界面
     init_palette();
     init_screen();
 
+    // 初始化键盘、鼠标以及数据缓冲区
+    init_keyboard();
     static char cursor[256];
     init_mouse_cursor8(cursor);
     int mx = 160, my = 100;
@@ -25,24 +31,35 @@ void DogOS_main(void) {
     char keybuf[32], mousebuf[128], s[12];
     fifo8_init(&KEYBOARD, 32, keybuf);
     fifo8_init(&MOUSE, 128, mousebuf);
-    unsigned char data, dh, dl;
+    unsigned char data;
 
+    // 初始0x00200000以上内存可用
+    memman_init(&MEMORY);
+    unsigned int memtotal = memtest(0x00400000, 0xbfffffff);
+    memman_free(&MEMORY, 0x00200000, memtotal - 0x00200000);
+
+    data = memtotal / (1024 * 1024);
+    c2hex(s, data);
+    s[2] = 'M';
+    s[3] = 'B';
+    s[4] = 0;
+    putfonts8_asc(0, 0, COL8_FFFFFF, s);
+
+    // 鼠标键盘交互
     for(;;) {
-        io_cli();
+        io_hlt();
 
         while(fifo8_status(&KEYBOARD)) {
+            io_cli();
             data = fifo8_get(&KEYBOARD);
             io_sti();
-            dh = data / 16;
-            dl = data % 16;
-            s[0] = (dh < 10)?(dh + 0x30):(dh + 0x37);
-            s[1] = (dl < 10)?(dl + 0x30):(dl + 0x37);
-            s[2] = 0;
+            c2hex(s, data);
             boxfill8(0, 16, 15, 31, COL8_008484);
             putfonts8_asc(0, 16, COL8_FFFFFF, s);
         }
 
         while(fifo8_status(&MOUSE)) {
+            io_cli();
             data = fifo8_get(&MOUSE);
             io_sti();
             if(mouse_decode(&mdec, data)) {
@@ -51,15 +68,9 @@ void DogOS_main(void) {
                 s[2] = (mdec.btn & 0x02)?'C':'c';
                 s[3] = (mdec.btn & 0x04)?'R':'r';
                 s[4] = ' ';
-                dh = mdec.x / 16;
-                dl = mdec.x % 16;
-                s[5] = (dh < 10)?(dh + 0x30):(dh + 0x37);
-                s[6] = (dl < 10)?(dl + 0x30):(dl + 0x37);
+                c2hex(&s[5], mdec.x);
                 s[7] = ' ';
-                dh = mdec.y / 16;
-                dl = mdec.y % 16;
-                s[8] = (dh < 10)?(dh + 0x30):(dh + 0x37);
-                s[9] = (dl < 10)?(dl + 0x30):(dl + 0x37);
+                c2hex(&s[8], mdec.y);
                 s[10] = ']';
                 s[11] = 0;
                 boxfill8(32, 16, 31+8*11, 31, COL8_008484);
@@ -74,9 +85,14 @@ void DogOS_main(void) {
                 putblock8_8(mx, my, 16, 16, cursor);
             }
         }
-        
-        io_stihlt();
     }
 }
 
-
+void c2hex(char *s, unsigned char data) {
+    unsigned char dh, dl;
+    dh = data / 16;
+    dl = data % 16;
+    s[0] = (dh < 10)?(dh + 0x30):(dh + 0x37);
+    s[1] = (dl < 10)?(dl + 0x30):(dl + 0x37);
+    s[2] = 0;
+}

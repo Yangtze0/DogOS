@@ -8,6 +8,7 @@
     GLOBAL  _io_out8, _io_out16, _io_out32
     GLOBAL  _io_load_eflags, _io_store_eflags
     GLOBAL  _load_idtr
+    GLOBAL  _load_cr0, _store_cr0
     GLOBAL  _asm_inthandler21, _asm_inthandler27, _asm_inthandler2c
 
     EXTERN  _inthandler21, _inthandler27, _inthandler2c
@@ -24,11 +25,6 @@ _io_cli:                ;   void io_cli(void);
 
 _io_sti:                ;   void io_sti(void);
     sti
-    ret
-
-_io_stihlt:             ;   void io_stihlt(void);
-    sti
-    hlt
     ret
 
 _io_in8:                ;   int io_in8(int port);
@@ -81,6 +77,15 @@ _load_idtr:             ;   void load_idtr(int limit, int addr);
     mov ax,[esp+4]
     mov [esp+6],ax
     lidt [esp+6]
+    ret
+
+_load_cr0:              ;   int load_cr0(void);
+    mov eax,cr0
+    ret
+
+_store_cr0:             ;   void store_cr0(int cr0);
+    mov eax,[esp+4]
+    mov cr0,eax
     ret
 
 _asm_inthandler21:
