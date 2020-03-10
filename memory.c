@@ -45,32 +45,32 @@ unsigned int memtest(unsigned int start, unsigned int end) {
 }
 
 void memman_init(struct MEMMAN *man) {
-    man->frees = 0;                         // 可用信息数目
-    man->maxfrees = 0;
-    man->lostsize = 0;                      // 释放失败内存大小
-    man->losts = 0;                         // 释放失败次数
+    MEMORY.frees = 0;                         // 可用信息数目
+    MEMORY.maxfrees = 0;
+    MEMORY.lostsize = 0;                      // 释放失败内存大小
+    MEMORY.losts = 0;                         // 释放失败次数
 }
 
 /* 报告空闲内存大小 */
-unsigned int memman_total(struct MEMMAN *man) {
+unsigned int memman_total(void) {
     unsigned int i, t = 0;
-    for (i = 0; i < man->frees; i++) {
-        t += man->free[i].size;
+    for (i = 0; i < MEMORY.frees; i++) {
+        t += MEMORY.free[i].size;
     }
     return t;
 }
 
-unsigned int memman_alloc(struct MEMMAN *man, unsigned int size) {
+unsigned int memman_alloc(unsigned int size) {
     unsigned int i, a;
-    for (i = 0; i < man->frees; i++) {      // 找到足够大的空闲内存
-        if (man->free[i].size >= size) {
-            a = man->free[i].addr;
-            man->free[i].addr += size;
-            man->free[i].size -= size;
-            if (man->free[i].size == 0) {
-                man->frees--;
-                for (; i < man->frees; i++) {
-                    man->free[i] = man->free[i + 1];
+    for (i = 0; i < MEMORY.frees; i++) {      // 找到足够大的空闲内存
+        if (MEMORY.free[i].size >= size) {
+            a = MEMORY.free[i].addr;
+            MEMORY.free[i].addr += size;
+            MEMORY.free[i].size -= size;
+            if (MEMORY.free[i].size == 0) {
+                MEMORY.frees--;
+                for (; i < MEMORY.frees; i++) {
+                    MEMORY.free[i] = MEMORY.free[i + 1];
                 }
             }
             return a;                       // 可用空间地址
@@ -80,46 +80,54 @@ unsigned int memman_alloc(struct MEMMAN *man, unsigned int size) {
     return 0;                               // 没有可用空间
 }
 
-int memman_free(struct MEMMAN *man, unsigned int addr, unsigned int size) {
+int memman_free(unsigned int addr, unsigned int size) {
     int i, j;
-    for (i = 0; i < man->frees; i++) {
-        if (man->free[i].addr > addr) break;
+    for (i = 0; i < MEMORY.frees; i++) {
+        if (MEMORY.free[i].addr > addr) break;
     }
 
     // free[i - 1].addr <= addr < free[i].addr
-    if (man->free[i - 1].addr + man->free[i - 1].size == addr) {
-        man->free[i - 1].size += size;      // 与前一项合并
-        if (i < man->frees) {
-            if (addr + size == man->free[i].addr) {
-                man->free[i - 1].size += man->free[i].size;
-                man->frees--;
-                for (; i < man->frees; i++) {
-                    man->free[i] = man->free[i + 1];
+    if (MEMORY.free[i - 1].addr + MEMORY.free[i - 1].size == addr) {
+        MEMORY.free[i - 1].size += size;      // 与前一项合并
+        if (i < MEMORY.frees) {
+            if (addr + size == MEMORY.free[i].addr) {
+                MEMORY.free[i - 1].size += MEMORY.free[i].size;
+                MEMORY.frees--;
+                for (; i < MEMORY.frees; i++) {
+                    MEMORY.free[i] = MEMORY.free[i + 1];
                 }
             }
         }
         return 0;
 	}
 
-    if (i < man->frees) {
-        if (addr + size == man->free[i].addr) {
-            man->free[i].addr = addr;
-            man->free[i].size += size;
+    if (i < MEMORY.frees) {
+        if (addr + size == MEMORY.free[i].addr) {
+            MEMORY.free[i].addr = addr;
+            MEMORY.free[i].size += size;
             return 0;
         }
     }
 
-    if (man->frees < MEMMAN_FREES) {
-        for (j = man->frees; j > i; j--) man->free[j] = man->free[j - 1];
-        man->frees++;
-        if (man->maxfrees < man->frees) man->maxfrees = man->frees;
-        man->free[i].addr = addr;
-        man->free[i].size = size;
+    if (MEMORY.frees < MEMMAN_FREES) {
+        for (j = MEMORY.frees; j > i; j--) MEMORY.free[j] = MEMORY.free[j - 1];
+        MEMORY.frees++;
+        if (MEMORY.maxfrees < MEMORY.frees) MEMORY.maxfrees = MEMORY.frees;
+        MEMORY.free[i].addr = addr;
+        MEMORY.free[i].size = size;
         return 0;
     }
 
     // 释放失败
-    man->losts++;
-    man->lostsize += size;
+    MEMORY.losts++;
+    MEMORY.lostsize += size;
     return -1;
+}
+
+unsigned int memman_alloc_4k(unsigned int size) {
+    return memman_alloc((size + 0xfff) & 0xfffff000);
+}
+
+int memman_free_4k(unsigned int addr, unsigned int size) {
+    return memman_free(addr, (size + 0xfff) & 0xfffff000);
 }

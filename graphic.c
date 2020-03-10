@@ -1,8 +1,8 @@
 
 #include "dogos.h"
 
-static unsigned char *VRAM = (unsigned char *)0xa0000;  //  VGA320*200*8
 extern char FONT[4096];
+unsigned char *VRAM = (unsigned char *)0xa0000; //  VGA320*200*8
 
 void init_palette(void) {
     static unsigned char table_rgb[16*3] = {
@@ -35,39 +35,39 @@ void init_palette(void) {
     io_store_eflags(eflags);
 }
 
-void boxfill8(int x0, int y0, int x1, int y1, unsigned char color) {
+void boxfill8(unsigned char *vram, int x0, int y0, int x1, int y1, unsigned char color) {
     for (int y = y0; y <= y1; y++) {
         for (int x = x0; x <= x1; x++)
-            VRAM[y * 320 + x] = color;
+            vram[y * 320 + x] = color;
     }
 }
 
-void init_screen(void) {
+void init_screen(unsigned char *vram) {
     int xm = 320, ym = 200;
 
-    boxfill8(0,     0,      xm-1,   ym-29,  COL8_008484);
-    boxfill8(0,     ym-28,  xm-1,   ym-28,  COL8_C6C6C6);
-    boxfill8(0,     ym-27,  xm-1,   ym-27,  COL8_FFFFFF);
-    boxfill8(0,     ym-26,  xm-1,   ym-1,   COL8_C6C6C6);
+    boxfill8(vram,  0,     0,      xm-1,   ym-29,  COL8_008484);
+    boxfill8(vram,  0,     ym-28,  xm-1,   ym-28,  COL8_C6C6C6);
+    boxfill8(vram,  0,     ym-27,  xm-1,   ym-27,  COL8_FFFFFF);
+    boxfill8(vram,  0,     ym-26,  xm-1,   ym-1,   COL8_C6C6C6);
 
-    boxfill8(3,     ym-24,  59,     ym-24,  COL8_FFFFFF);
-    boxfill8(2,     ym-24,  2,      ym-4,   COL8_FFFFFF);
-    boxfill8(3,     ym-4,   59,     ym-4,   COL8_848484);
-    boxfill8(59,    ym-23,  59,     ym-5,   COL8_848484);
-    boxfill8(2,     ym-3,   59,     ym-3,   COL8_000000);
-    boxfill8(60,    ym-24,  60,     ym-3,   COL8_000000);
+    boxfill8(vram,  3,     ym-24,  59,     ym-24,  COL8_FFFFFF);
+    boxfill8(vram,  2,     ym-24,  2,      ym-4,   COL8_FFFFFF);
+    boxfill8(vram,  3,     ym-4,   59,     ym-4,   COL8_848484);
+    boxfill8(vram,  59,    ym-23,  59,     ym-5,   COL8_848484);
+    boxfill8(vram,  2,     ym-3,   59,     ym-3,   COL8_000000);
+    boxfill8(vram,  60,    ym-24,  60,     ym-3,   COL8_000000);
 
-    boxfill8(xm-47, ym-24,  xm-4,   ym-24,  COL8_848484);
-    boxfill8(xm-47, ym-23,  xm-47,  ym-4,   COL8_848484);
-    boxfill8(xm-47, ym-3,   xm-4,   ym-3,   COL8_FFFFFF);
-    boxfill8(xm-3,  ym-24,  xm-3,   ym-3,   COL8_FFFFFF);
+    boxfill8(vram,  xm-47, ym-24,  xm-4,   ym-24,  COL8_848484);
+    boxfill8(vram,  xm-47, ym-23,  xm-47,  ym-4,   COL8_848484);
+    boxfill8(vram,  xm-47, ym-3,   xm-4,   ym-3,   COL8_FFFFFF);
+    boxfill8(vram,  xm-3,  ym-24,  xm-3,   ym-3,   COL8_FFFFFF);
 }
 
-void putfont8(int x, int y, unsigned char color, char *font) {
+void putfont8(unsigned char *vram, int x, int y, unsigned char color, char *font) {
     unsigned char *row;
     char data;
     for(int i = 0; i < 16; i++) {
-        row = VRAM + (y + i) * 320 + x;
+        row = vram + (y + i) * 320 + x;
 		data = font[i];
         for(int j = 0; j < 8; j++) {
             if(data & (0x80 >> j)) row[j] = color;
@@ -75,15 +75,15 @@ void putfont8(int x, int y, unsigned char color, char *font) {
     }
 }
 
-void putfonts8_asc(int x, int y, unsigned char color, char *s) {
+void putfonts8_asc(unsigned char *vram, int x, int y, unsigned char color, char *s) {
     while (*s) {
-        putfont8(x, y, color, FONT + (*s) * 16);
+        putfont8(vram, x, y, color, FONT + (*s) * 16);
         x += 8;
         s++;
     }
 }
 
-void init_mouse_cursor8(char *mouse) {
+void init_mouse_cursor8(unsigned char *mouse) {
     static char cursor[16][16] = {
         "**************..",
         "*OOOOOOOOOOO*...",
@@ -114,17 +114,17 @@ void init_mouse_cursor8(char *mouse) {
                 mouse[y * 16 + x] = COL8_FFFFFF;
                 break;
             case '.':
-                mouse[y * 16 + x] = COL8_008484;
+                mouse[y * 16 + x] = COL_INVISIBLE;
                 break;
             }
 		}
 	}
 }
 
-void putblock8_8(int x0, int y0, int sx, int sy, char *mouse) {
+void putblock8_8(unsigned char *vram, int x0, int y0, int sx, int sy, char *mouse) {
 	for (int y = 0; y < sy; y++) {
 		for (int x = 0; x < sx; x++) {
-			VRAM[(y0 + y) * 320 + (x0 + x)] = mouse[y * sx + x];
+			vram[(y0 + y) * 320 + (x0 + x)] = mouse[y * sx + x];
 		}
 	}
 }

@@ -36,14 +36,15 @@ void asm_inthandler2c(void);
 #define COL8_840084     13
 #define COL8_008484     14
 #define COL8_848484     15
+#define COL_INVISIBLE   99
 
 void init_palette(void);
-void boxfill8(int x0, int y0, int x1, int y1, unsigned char color);
-void init_screen(void);
-void putfont8(int x, int y, unsigned char color, char *font);
-void putfonts8_asc(int x, int y, unsigned char color, char *s);
-void init_mouse_cursor8(char *mouse);
-void putblock8_8(int x0, int y0, int sx, int sy, char *mouse);
+void boxfill8(unsigned char *vram, int x0, int y0, int x1, int y1, unsigned char color);
+void init_screen(unsigned char *vram);
+void putfont8(unsigned char *vram, int x, int y, unsigned char color, char *font);
+void putfonts8_asc(unsigned char *vram, int x, int y, unsigned char color, char *s);
+void init_mouse_cursor8(unsigned char *mouse);
+void putblock8_8(unsigned char *vram, int x0, int y0, int sx, int sy, char *mouse);
 
 
 /* dsctbl.c */
@@ -132,7 +133,30 @@ struct MEMMAN {
 
 unsigned int memtest(unsigned int start, unsigned int end);
 void memman_init(struct MEMMAN *man);
-unsigned int memman_total(struct MEMMAN *man);
-unsigned int memman_alloc(struct MEMMAN *man, unsigned int size);
-int memman_free(struct MEMMAN *man, unsigned int addr, unsigned int size);
+unsigned int memman_total(void);
+unsigned int memman_alloc(unsigned int size);
+int memman_free(unsigned int addr, unsigned int size);
+unsigned int memman_alloc_4k(unsigned int size);
+int memman_free_4k(unsigned int addr, unsigned int size);
 
+/* sheet.c */
+#define MAX_SHEETS      256
+
+struct SHEET {
+    unsigned char *buf, height;     // 图层内容、高度
+    int x0, y0, xs, ys, flags;
+};
+
+struct SHTCTL {
+    int top;
+    struct SHEET *sheets[MAX_SHEETS];
+    struct SHEET sheets0[MAX_SHEETS];
+};
+
+void shtctl_init(struct SHTCTL *ss);
+struct SHEET *sheet_alloc(int x0, int y0, int xs, int ys, unsigned char *buf);
+void sheet_updown(struct SHEET *sht, unsigned char height);
+void sheet_refresh(struct SHEET *sht);
+void sheet_refreshsub(int x0, int y0, int x1, int y1);
+void sheet_slide(struct SHEET *sht, int x0, int y0);
+void sheet_free(struct SHEET *sht);

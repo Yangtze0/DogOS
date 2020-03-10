@@ -23,7 +23,7 @@ default : dogos.img
 
 
 # 基本规则
-OBJS =	dogos.o graphic.o dsctbl.o int.o fifo.o	memory.o \
+OBJS =	dogos.o sheet.o graphic.o dsctbl.o int.o fifo.o	memory.o \
 		mouse.o keyboard.o nasm_func.o myfont.o
 
 dogos : $(OBJS)		# To be improved : __nl_symbol_ptr
