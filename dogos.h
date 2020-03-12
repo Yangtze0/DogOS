@@ -39,10 +39,10 @@ void asm_inthandler2c(void);
 #define COL_INVISIBLE   99
 
 void init_palette(void);
-void boxfill8(unsigned char *vram, int x0, int y0, int x1, int y1, unsigned char color);
+void boxfill8(unsigned char *vram, int xs, int x0, int y0, int x1, int y1, unsigned char color);
 void init_screen(unsigned char *vram);
-void putfont8(unsigned char *vram, int x, int y, unsigned char color, char *font);
-void putfonts8_asc(unsigned char *vram, int x, int y, unsigned char color, char *s);
+void putfont8(unsigned char *vram, int xs, int x, int y, unsigned char color, char *font);
+void putfonts8_asc(unsigned char *vram, int xs, int x, int y, unsigned char color, char *s);
 void init_mouse_cursor8(unsigned char *mouse);
 void putblock8_8(unsigned char *vram, int x0, int y0, int sx, int sy, char *mouse);
 
@@ -148,6 +148,7 @@ struct SHEET {
 };
 
 struct SHTCTL {
+    unsigned char vmap[320*200];
     int top;
     struct SHEET *sheets[MAX_SHEETS];
     struct SHEET sheets0[MAX_SHEETS];
@@ -156,7 +157,8 @@ struct SHTCTL {
 void shtctl_init(struct SHTCTL *ss);
 struct SHEET *sheet_alloc(int x0, int y0, int xs, int ys, unsigned char *buf);
 void sheet_updown(struct SHEET *sht, unsigned char height);
-void sheet_refresh(struct SHEET *sht);
-void sheet_refreshsub(int x0, int y0, int x1, int y1);
+void sheet_refreshmap(int h0, int x0, int y0, int x1, int y1);
+void sheet_refresh(struct SHEET *sht, int x0, int y0, int x1, int y1);
+void sheet_refreshsub(int h0, int h1, int x0, int y0, int x1, int y1);
 void sheet_slide(struct SHEET *sht, int x0, int y0);
 void sheet_free(struct SHEET *sht);

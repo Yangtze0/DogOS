@@ -47,6 +47,8 @@ void sheet_updown(struct SHEET *sht, unsigned char height) {
                 SHEETS.sheets[h]->height = h;
             }
             SHEETS.sheets[height] = sht;
+            sheet_refreshmap(height, sht->x0, sht->y0, sht->x0 + sht->xs, sht->y0 + sht->ys);
+            sheet_refreshsub(height, old, sht->x0, sht->y0, sht->x0 + sht->xs, sht->y0 + sht->ys);
         } else {                            // 隐藏图层
             if (SHEETS.top > old) {
                 for (h = old; h < SHEETS.top; h++) {
@@ -55,6 +57,8 @@ void sheet_updown(struct SHEET *sht, unsigned char height) {
                 }
             }
             SHEETS.top--;
+            sheet_refreshmap(1, sht->x0, sht->y0, sht->x0 + sht->xs, sht->y0 + sht->ys);
+            sheet_refreshsub(1, old, sht->x0, sht->y0, sht->x0 + sht->xs, sht->y0 + sht->ys);
         }
     } else if (height > old) {
         if (old) {
@@ -71,20 +75,51 @@ void sheet_updown(struct SHEET *sht, unsigned char height) {
             SHEETS.sheets[height] = sht;
             SHEETS.top++;
         }
+        sheet_refreshmap(height, sht->x0, sht->y0, sht->x0 + sht->xs, sht->y0 + sht->ys);
+        sheet_refreshsub(height, height, sht->x0, sht->y0, sht->x0 + sht->xs, sht->y0 + sht->ys);
     }
-
-    sheet_refresh(sht);                        // 更新画面
 }
 
-void sheet_refresh(struct SHEET *sht) {
-    sheet_refreshsub(sht->x0, sht->y0, sht->x0 + sht->xs, sht->y0 + sht->ys);
+void sheet_refreshmap(int h0, int x0, int y0, int x1, int y1) {
+    int vx, vy, bx0, by0, bx1, by1;
+    unsigned char *buf;
+    struct SHEET *sht;
+    if (x1 > 320) x1 = 320;
+    if (y1 > 200) y1 = 200;
+    for (int h = h0; h <= SHEETS.top; h++) {
+        sht = SHEETS.sheets[h];
+        buf = sht->buf;
+        bx0 = x0 - sht->x0;
+        by0 = y0 - sht->y0;
+        bx1 = x1 - sht->x0;
+        by1 = y1 - sht->y0;
+        if (bx0 < 0) bx0 = 0;
+        if (by0 < 0) by0 = 0;
+        if (bx1 > sht->xs) bx1 = sht->xs;
+        if (by1 > sht->ys) by1 = sht->ys;
+        for (int by = by0; by < by1; by++) {
+            vy = sht->y0 + by;
+            for (int bx = bx0; bx < bx1; bx++) {
+                vx = sht->x0 + bx;
+                if (buf[by * sht->xs + bx] != COL_INVISIBLE) {
+                    SHEETS.vmap[vy * 320 + vx] = h;
+                }
+            }
+        }
+    }
 }
 
-void sheet_refreshsub(int x0, int y0, int x1, int y1) {
+void sheet_refresh(struct SHEET *sht, int x0, int y0, int x1, int y1) {
+    sheet_refreshsub(sht->height, sht->height, sht->x0 + x0, sht->y0 + y0, sht->x0 + x1, sht->y0 + y1);
+}
+
+void sheet_refreshsub(int h0, int h1, int x0, int y0, int x1, int y1) {
     int vx, vy, bx0, by0, bx1, by1;
     unsigned char *buf, c;
     struct SHEET *sht;
-    for (int h = 1; h <= SHEETS.top; h++) {
+    if(x1 > 320) x1 = 320;
+    if(y1 > 200) y1 = 200;
+    for (int h = h0; h <= h1; h++) {
         sht = SHEETS.sheets[h];
         buf = sht->buf;
         bx0 = x0 - sht->x0;
@@ -100,7 +135,7 @@ void sheet_refreshsub(int x0, int y0, int x1, int y1) {
             for (int bx = bx0; bx < bx1; bx++) {
                 vx = sht->x0 + bx;
                 c = buf[by * sht->xs + bx];
-                if (c != COL_INVISIBLE) {
+                if (SHEETS.vmap[vy * 320 + vx] == h) {
                     VRAM[vy * 320 + vx] = c;
                 }
             }
@@ -113,8 +148,10 @@ void sheet_slide(struct SHEET *sht, int x0, int y0) {
     sht->x0 = x0;
     sht->y0 = y0;
     if (sht->height) {
-        sheet_refreshsub(old_x0, old_y0, old_x0 + sht->xs, old_y0 + sht->ys);
-        sheet_refreshsub(x0, y0, x0 + sht->xs, y0 + sht->ys);
+        sheet_refreshmap(1, old_x0, old_y0, old_x0 + sht->xs, old_y0 + sht->ys);
+        sheet_refreshmap(sht->height, x0, y0, x0 + sht->xs, y0 + sht->ys);
+        sheet_refreshsub(1, sht->height - 1, old_x0, old_y0, old_x0 + sht->xs, old_y0 + sht->ys);
+        sheet_refreshsub(sht->height, sht->height, x0, y0, x0 + sht->xs, y0 + sht->ys);
     }
 }
 
