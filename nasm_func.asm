@@ -9,9 +9,10 @@
     GLOBAL  _io_load_eflags, _io_store_eflags
     GLOBAL  _load_idtr
     GLOBAL  _load_cr0, _store_cr0
-    GLOBAL  _asm_inthandler21, _asm_inthandler27, _asm_inthandler2c
 
-    EXTERN  _inthandler21, _inthandler27, _inthandler2c
+    GLOBAL  _asm_inthandler20, _asm_inthandler21
+    GLOBAL  _asm_inthandler27, _asm_inthandler2c
+    EXTERN  _inthandler20, _inthandler21, _inthandler27, _inthandler2c
 
 section .text
 
@@ -87,6 +88,19 @@ _store_cr0:             ;   void store_cr0(int cr0);
     mov eax,[esp+4]
     mov cr0,eax
     ret
+
+_asm_inthandler20:
+    push es
+    push ds
+    pushad
+    mov eax,esp
+    push eax
+    call _inthandler20
+    pop eax
+    popad
+    pop ds
+    pop es
+    iretd
 
 _asm_inthandler21:
     push es

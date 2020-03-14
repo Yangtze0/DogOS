@@ -18,9 +18,13 @@ void init_pic(void) {
     io_out8(PIC0_IMR,   0xfb);  // PCI1以外全部禁止
     io_out8(PIC1_IMR,   0xff);  // 禁止所有中断
 
-    io_out8(PIC0_IMR,   0xf9);  // 开启int21 键盘中断
-	io_out8(PIC1_IMR,   0xef);  // 开启int2c 鼠标中断
+    init_pit();                 // 设置IRQ0定时器
+
+    io_out8(PIC0_IMR,   0xf8);  // 开放int20(定时器)、int21(键盘中断)
+	io_out8(PIC1_IMR,   0xef);  // 开放int2c(鼠标中断)
 }
+
+// inthandler20: timer.c
 
 // inthandler21: keyboard.c
 

@@ -14,6 +14,7 @@ void io_store_eflags(int eflags);
 void load_idtr(int limit, int addr);
 int load_cr0(void);
 void store_cr0(int cr0);
+void asm_inthandler20(void);
 void asm_inthandler21(void);
 void asm_inthandler27(void);
 void asm_inthandler2c(void);
@@ -147,14 +148,14 @@ struct SHEET {
     int x0, y0, xs, ys, flags;
 };
 
-struct SHTCTL {
+struct SHEETCTL {
     unsigned char vmap[320*200];
     int top;
     struct SHEET *sheets[MAX_SHEETS];
     struct SHEET sheets0[MAX_SHEETS];
 };
 
-void shtctl_init(struct SHTCTL *ss);
+void shtctl_init(struct SHEETCTL *ss);
 struct SHEET *sheet_alloc(int x0, int y0, int xs, int ys, unsigned char *buf);
 void sheet_updown(struct SHEET *sht, unsigned char height);
 void sheet_refreshmap(int h0, int x0, int y0, int x1, int y1);
@@ -162,3 +163,29 @@ void sheet_refresh(struct SHEET *sht, int x0, int y0, int x1, int y1);
 void sheet_refreshsub(int h0, int h1, int x0, int y0, int x1, int y1);
 void sheet_slide(struct SHEET *sht, int x0, int y0);
 void sheet_free(struct SHEET *sht);
+
+
+/* timer.c */
+#define PIT_CTRL    0x0043
+#define PIT_CNT0    0x0040
+#define MAX_TIMER   500
+#define TIMER_FLAGS_ALLOC   1   // 定时器已配置
+#define TIMER_FLAGS_USING   2   // 定时器已运行
+
+struct TIMER {
+    unsigned int timeout, flags;
+    struct FIFO8 *fifo;
+    unsigned char data;
+};
+
+struct TIMERCTL {
+    unsigned int count, next;
+    struct TIMER timer[MAX_TIMER];
+};
+
+void init_pit(void);
+struct TIMER *timer_alloc(void);
+void timer_free(struct TIMER *timer);
+void timer_init(struct TIMER *timer, struct FIFO8 *fifo, unsigned char data);
+void timer_settime(struct TIMER *timer, unsigned int timeout);
+void inthandler20(int *esp);

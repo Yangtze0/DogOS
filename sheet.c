@@ -2,9 +2,9 @@
 #include "dogos.h"
 
 extern unsigned char *VRAM;
-struct SHTCTL SHEETS;
+struct SHEETCTL SHEETS;
 
-void shtctl_init(struct SHTCTL *ss) {
+void shtctl_init(struct SHEETCTL *ss) {
     ss->top = 0;                        // 无图层
     for (int i = 0; i < MAX_SHEETS; i++) {
         ss->sheets0[i].flags = 0;       // 标记为未使用

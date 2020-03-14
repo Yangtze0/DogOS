@@ -6,7 +6,8 @@
 
 extern struct FIFO8 KEYBOARD, MOUSE;
 extern struct MEMMAN MEMORY;
-extern struct SHTCTL SHEETS;
+extern struct SHEETCTL SHEETS;
+extern struct TIMERCTL TIMERS;
 
 void make_window8(unsigned char *buf, int xsize, int ysize, char *title);
 void c2hex(char *s, unsigned char data);
@@ -60,19 +61,29 @@ void DogOS_main(void) {
     putfonts8_asc(buf_back, 320, 0, 0, COL8_FFFFFF, s);
     sheet_refresh(sht_back, 0, 0, 8*4, 16);
 
-    unsigned int i, count = 0;
-    char n[9];
+    // 定时器
+    struct FIFO8 timerfifo[3];
+    char timerbuf[3][8];
+    struct TIMER *timer[3];
+    for(int i = 0; i < 3; i++) {
+        fifo8_init(&timerfifo[i], 8, timerbuf[i]);
+        timer[i] = timer_alloc();
+        timer_init(timer[i], &timerfifo[i], 1);
+    }
+    timer_settime(timer[0], 1000);
+    timer_settime(timer[1], 300);
+    timer_settime(timer[2], 50);
+
 
     for(;;) {
-        // 循环计数器，结果显示在窗口图层
-        count++;
-        for(i = 0; i < 4; i++) {
-            data = ((unsigned char *)&count)[3-i];
-            c2hex(n+(2*i), data);
+        // 计数器，结果显示在窗口图层
+        for(int i = 0; i < 4; i++) {
+            data = ((unsigned char *)&TIMERS.count)[3-i];
+            c2hex(s+(2*i), data);
         }
-        n[8] = 0;
+        s[8] = 0;
         boxfill8(buf_win, 160, 40, 28, 39+8*8, 43, COL8_C6C6C6);
-        putfonts8_asc(buf_win, 160, 40, 28, COL8_000000, n);
+        putfonts8_asc(buf_win, 160, 40, 28, COL8_000000, s);
         sheet_refresh(sht_win, 40, 28, 39+8*8, 43);
 
         io_hlt();
@@ -115,6 +126,40 @@ void DogOS_main(void) {
                 if(my > 200 - 1) my = 200 - 1;
                 sheet_slide(sht_mouse, mx, my);
             }
+        }
+
+        // 定时器1超时响应
+        while(fifo8_status(&timerfifo[0])) {
+            io_cli();
+            data = fifo8_get(&timerfifo[0]);
+            io_sti();
+            putfonts8_asc(buf_back, 320, 0, 32, COL8_FFFFFF, "10[sec]");
+            sheet_refresh(sht_back, 0, 32, 56, 48);
+        }
+
+        // 定时器2超时响应
+        while(fifo8_status(&timerfifo[1])) {
+            io_cli();
+            data = fifo8_get(&timerfifo[1]);
+            io_sti();
+            putfonts8_asc(buf_back, 320, 0, 48, COL8_FFFFFF, "3[sec]");
+            sheet_refresh(sht_back, 0, 48, 48, 64);
+        }
+
+        // 定时器3超时响应，模拟光标
+        while(fifo8_status(&timerfifo[2])) {
+            io_cli();
+            data = fifo8_get(&timerfifo[2]);
+            io_sti();
+            if (data) {
+                timer[2]->data = 0;
+                boxfill8(buf_back, 320, 0, 64, 7, 80, COL8_FFFFFF);
+            } else {
+                timer[2]->data = 1;
+                boxfill8(buf_back, 320, 0, 64, 7, 80, COL8_008484);
+            }
+            timer_settime(timer[2], 50);
+            sheet_refresh(sht_back, 0, 64, 7, 80);
         }
     }
 }

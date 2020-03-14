@@ -14,6 +14,7 @@ void init_idt(void) {
         set_gatedesc(idt + i, 0, 0, 0);
     }
 
+    set_gatedesc(idt + 0x20, (int) asm_inthandler20, 0x0008, AR_INTGATE32);
     set_gatedesc(idt + 0x21, (int) asm_inthandler21, 0x0008, AR_INTGATE32);
 	set_gatedesc(idt + 0x27, (int) asm_inthandler27, 0x0008, AR_INTGATE32);
 	set_gatedesc(idt + 0x2c, (int) asm_inthandler2c, 0x0008, AR_INTGATE32);
