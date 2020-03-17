@@ -9,6 +9,7 @@ extern struct MEMMAN MEMORY;
 extern struct SHEETCTL SHEETS;
 extern struct TIMERCTL TIMERS;
 
+void putfonts8_asc_sht(struct SHEET *sht, int x, int y, int b, int c, char *s, int l);
 void make_window8(unsigned char *buf, int xsize, int ysize, char *title);
 void c2hex(char *s, unsigned char data);
 
@@ -58,21 +59,22 @@ void DogOS_main(void) {
     s[2] = 'M';
     s[3] = 'B';
     s[4] = 0;
-    putfonts8_asc(buf_back, 320, 0, 0, COL8_FFFFFF, s);
-    sheet_refresh(sht_back, 0, 0, 8*4, 16);
+    putfonts8_asc_sht(sht_back, 0, 0, COL_INVISIBLE, COL8_FFFFFF, s, 4);
 
     // 定时器
-    struct FIFO8 timerfifo[3];
-    char timerbuf[3][8];
-    struct TIMER *timer[3];
-    for(int i = 0; i < 3; i++) {
-        fifo8_init(&timerfifo[i], 8, timerbuf[i]);
-        timer[i] = timer_alloc();
-        timer_init(timer[i], &timerfifo[i], 1);
-    }
-    timer_settime(timer[0], 1000);
-    timer_settime(timer[1], 300);
-    timer_settime(timer[2], 50);
+    struct FIFO8 timerfifo;
+    char timerbuf[8];
+    fifo8_init(&timerfifo, 8, timerbuf);
+    struct TIMER *timer1, *timer2, *timer3;
+    timer1 = timer_alloc();
+    timer_init(timer1, &timerfifo, 10);
+    timer_settime(timer1, 1000);
+    timer2 = timer_alloc();
+    timer_init(timer2, &timerfifo, 3);
+    timer_settime(timer2, 300);
+    timer3 = timer_alloc();
+    timer_init(timer3, &timerfifo, 1);
+    timer_settime(timer3, 50);
 
 
     for(;;) {
@@ -82,9 +84,7 @@ void DogOS_main(void) {
             c2hex(s+(2*i), data);
         }
         s[8] = 0;
-        boxfill8(buf_win, 160, 40, 28, 39+8*8, 43, COL8_C6C6C6);
-        putfonts8_asc(buf_win, 160, 40, 28, COL8_000000, s);
-        sheet_refresh(sht_win, 40, 28, 39+8*8, 43);
+        putfonts8_asc_sht(sht_win, 40, 28, COL8_C6C6C6, COL8_000000, s, 8);
 
         io_hlt();
 
@@ -94,9 +94,7 @@ void DogOS_main(void) {
             data = fifo8_get(&KEYBOARD);
             io_sti();
             c2hex(s, data);
-            boxfill8(buf_back, 320, 0, 16, 15, 31, COL8_008484);
-            putfonts8_asc(buf_back, 320, 0, 16, COL8_FFFFFF, s);
-            sheet_refresh(sht_back, 0, 16, 15, 31);
+            putfonts8_asc_sht(sht_back, 0, 16, COL8_008484, COL8_FFFFFF, s, 2);
         }
 
         // 鼠标中断响应
@@ -115,9 +113,7 @@ void DogOS_main(void) {
                 c2hex(&s[8], mdec.y);
                 s[10] = ']';
                 s[11] = 0;
-                boxfill8(buf_back, 320, 32, 16, 31+8*11, 31, COL8_008484);
-                putfonts8_asc(buf_back, 320, 32, 16, COL8_FFFFFF, s);
-                sheet_refresh(sht_back, 32, 16, 31+8*11, 31);
+                putfonts8_asc_sht(sht_back, 32, 16, COL8_008484, COL8_FFFFFF, s, 11);
                 mx += mdec.x;
                 my += mdec.y;
                 if(mx < 0) mx = 0;
@@ -128,38 +124,31 @@ void DogOS_main(void) {
             }
         }
 
-        // 定时器1超时响应
-        while(fifo8_status(&timerfifo[0])) {
+        // 定时器超时响应
+        while(fifo8_status(&timerfifo)) {
             io_cli();
-            data = fifo8_get(&timerfifo[0]);
+            data = fifo8_get(&timerfifo);
             io_sti();
-            putfonts8_asc(buf_back, 320, 0, 32, COL8_FFFFFF, "10[sec]");
-            sheet_refresh(sht_back, 0, 32, 56, 48);
-        }
-
-        // 定时器2超时响应
-        while(fifo8_status(&timerfifo[1])) {
-            io_cli();
-            data = fifo8_get(&timerfifo[1]);
-            io_sti();
-            putfonts8_asc(buf_back, 320, 0, 48, COL8_FFFFFF, "3[sec]");
-            sheet_refresh(sht_back, 0, 48, 48, 64);
-        }
-
-        // 定时器3超时响应，模拟光标
-        while(fifo8_status(&timerfifo[2])) {
-            io_cli();
-            data = fifo8_get(&timerfifo[2]);
-            io_sti();
-            if (data) {
-                timer[2]->data = 0;
-                boxfill8(buf_back, 320, 0, 64, 7, 80, COL8_FFFFFF);
-            } else {
-                timer[2]->data = 1;
-                boxfill8(buf_back, 320, 0, 64, 7, 80, COL8_008484);
+            switch (data) {
+            case 10:
+                putfonts8_asc_sht(sht_back, 0, 32, COL_INVISIBLE, COL8_FFFFFF, "10[sec]", 7);
+                break;
+            case 3:
+                putfonts8_asc_sht(sht_back, 0, 48, COL_INVISIBLE, COL8_FFFFFF, "3[sec]", 6);
+                break;
+            case 1:
+            case 0:
+                if (data) {
+                    timer3->data = 0;
+                    boxfill8(buf_back, 320, 0, 64, 7, 80, COL8_FFFFFF);
+                } else {
+                    timer3->data = 1;
+                    boxfill8(buf_back, 320, 0, 64, 7, 80, COL8_008484);
+                }
+                timer_settime(timer3, 50);
+                sheet_refresh(sht_back, 0, 64, 7, 80);
+                break;
             }
-            timer_settime(timer[2], 50);
-            sheet_refresh(sht_back, 0, 64, 7, 80);
         }
     }
 }
@@ -225,4 +214,10 @@ void make_window8(unsigned char *buf, int xs, int ys, char *title) {
             buf[(5 + y) * xs + (xs - 21 + x)] = c;
         }
     }
+}
+
+void putfonts8_asc_sht(struct SHEET *sht, int x, int y, int b, int c, char *s, int l) {
+    boxfill8(sht->buf, sht->xs, x, y, x + l * 8 - 1, y + 15, b);
+    putfonts8_asc(sht->buf, sht->xs, x, y, c, s);
+    sheet_refresh(sht, x, y, x + l * 8, y + 16);
 }

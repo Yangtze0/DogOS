@@ -37,8 +37,9 @@ void init_palette(void) {
 
 void boxfill8(unsigned char *vram, int xs, int x0, int y0, int x1, int y1, unsigned char color) {
     for (int y = y0; y<= y1; y++) {
-        for (int x = x0; x <= x1; x++)
-            vram[y * xs + x] = color;
+        for (int x = x0; x <= x1; x++) {
+            if(color != COL_INVISIBLE) vram[y * xs + x] = color;
+        }
     }
 }
 
