@@ -1,7 +1,21 @@
 ; DogOS ipl
 ; TAB=4
 
-    CYLS    equ 10			;柱面数量
+; VBE显卡模式
+VBEMODE	equ 0x101
+; 0x100 : 640*400*8bit彩色
+; 0x101 : 640*480*8bit彩色
+; 0x103 : 800*600*8bit彩色
+; 0x105 : 1024*768*8bit彩色
+; 0x107 : 1280*1024*8bit彩色
+
+; BOOT INFO
+CYLS    equ 10			;内核柱面数量
+LEDS	equ 0x7e02		;键盘状态字节
+VMODE	equ 0x7e03		;画面颜色位数
+SCRNX	equ 0x7e04		;分辨率X
+SCRNY	equ 0x7e06		;分辨率Y
+VRAM	equ 0x7e08		;显存地址
 
 section boot align=16 vstart=0x7c00
     mov ax,cs
@@ -40,10 +54,63 @@ section boot align=16 vstart=0x7c00
 		cmp ch,CYLS
 		jb read_loop
 
-    ;设置显卡模式
-    mov al,0x13     		;VGA图形模式，320*200*8位彩色模式，调色板模式
+	;检测高分辨率支持
+	mov ax,0x9000
+	mov es,ax
+	xor di,di
+	mov ax,0x4f00
+	int 0x10
+	cmp ax,0x004f
+	jne scrn320		;确认VBE是否存在
+
+	mov ax,[es:di+4]
+	cmp ax,0x0200
+	jb scrn320		;检查VBE版本
+	
+	mov cx,VBEMODE
+	mov ax,0x4f01
+	int 0x10
+	cmp ax,0x004f
+	jne scrn320		;取得画面模式信息
+
+	cmp byte [es:di+0x19],8
+	jne scrn320		;确认颜色数为8
+	cmp byte [es:di+0x1b],4
+	jne scrn320		;确认调色板模式
+	mov ax,[es:di+0x00]
+	and ax,0x0080
+	jz scrn320		;确认模式号码可加0x4000再进行指定
+
+	;切换VBE画面模式
+	mov bx,0x4000+VBEMODE
+	mov ax,0x4f02
+	int 0x10
+
+	mov byte [VMODE],8
+	mov ax,[es:di+0x12]
+	mov [SCRNX],ax
+	mov ax,[es:di+0x14]
+	mov [SCRNY],ax
+	mov eax,[es:di+0x28]
+	mov [VRAM],eax
+	jmp keystatus
+
+    ;默认VGA图形模式，320*200*8bit彩色(VRAM:0x000a0000~0x000af9ff)
+scrn320:
+    mov al,0x13
     mov ah,0x00
-    int 0x10        		;VRAM:0x000a0000~0x000af9ff
+    int 0x10
+
+	mov byte [VMODE],8
+	mov word [SCRNX],320
+	mov word [SCRNX],200
+	mov dword [VRAM],0x000a0000
+
+	;保存键盘状态字节
+keystatus:
+	mov ah,0x02
+	int 0x16
+	mov [LEDS],al
 
     ;Protect mode preparing...
 	mov ax,[GDTR+0x02]

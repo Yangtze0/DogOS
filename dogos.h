@@ -20,6 +20,17 @@ void asm_inthandler27(void);
 void asm_inthandler2c(void);
 
 
+/* boot.asm */
+struct BOOTINFO {
+    short reserve;
+    char leds;
+    char vmode;
+    short scrnx, scrny;
+    unsigned char *vram;
+};
+#define ADR_BOOTINFO    0x00007e00
+
+
 /* graphic.c */
 #define COL8_000000     0
 #define COL8_FF0000     1
@@ -41,11 +52,10 @@ void asm_inthandler2c(void);
 
 void init_palette(void);
 void boxfill8(unsigned char *vram, int xs, int x0, int y0, int x1, int y1, unsigned char color);
-void init_screen(unsigned char *vram);
+void init_screen(unsigned char *vram, int xm, int ym);
 void putfont8(unsigned char *vram, int xs, int x, int y, unsigned char color, char *font);
 void putfonts8_asc(unsigned char *vram, int xs, int x, int y, unsigned char color, char *s);
 void init_mouse_cursor8(unsigned char *mouse);
-void putblock8_8(unsigned char *vram, int x0, int y0, int sx, int sy, char *mouse);
 
 
 /* dsctbl.c */
@@ -140,6 +150,7 @@ int memman_free(unsigned int addr, unsigned int size);
 unsigned int memman_alloc_4k(unsigned int size);
 int memman_free_4k(unsigned int addr, unsigned int size);
 
+
 /* sheet.c */
 #define MAX_SHEETS      256
 
@@ -149,13 +160,13 @@ struct SHEET {
 };
 
 struct SHEETCTL {
-    unsigned char vmap[320*200];
-    int top;
+    unsigned char *vram, *vmap;
+    int xs, ys, top;
     struct SHEET *sheets[MAX_SHEETS];
     struct SHEET sheets0[MAX_SHEETS];
 };
 
-void shtctl_init(struct SHEETCTL *ss);
+void shtctl_init(struct SHEETCTL *ss, unsigned char *vram, int xs, int ys);
 struct SHEET *sheet_alloc(int x0, int y0, int xs, int ys, unsigned char *buf);
 void sheet_updown(struct SHEET *sht, unsigned char height);
 void sheet_refreshmap(int h0, int x0, int y0, int x1, int y1);

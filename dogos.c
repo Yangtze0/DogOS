@@ -11,9 +11,13 @@ extern struct TIMERCTL TIMERS;
 
 void putfonts8_asc_sht(struct SHEET *sht, int x, int y, int b, int c, char *s, int l);
 void make_window8(unsigned char *buf, int xsize, int ysize, char *title);
+void make_textbox8(struct SHEET *sht, int x0, int y0, int sx, int sy, int c);
 void c2hex(char *s, unsigned char data);
 
 void DogOS_main(void) {
+    // 系统信息
+    struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
+
     // 开放中断
     init_idt();
     init_pic();
@@ -34,21 +38,21 @@ void DogOS_main(void) {
 
     // 初始化图形界面
     init_palette();
-    shtctl_init(&SHEETS);
-
-    unsigned char *buf_back = (unsigned char *)memman_alloc_4k(320 * 200);
-    init_screen(buf_back);
-    struct SHEET *sht_back = sheet_alloc(0, 0, 320, 200, buf_back);
+    shtctl_init(&SHEETS, binfo->vram, binfo->scrnx, binfo->scrny);
+    unsigned char *buf_back = (unsigned char *)memman_alloc_4k(binfo->scrnx * binfo->scrny);
+    init_screen(buf_back, binfo->scrnx, binfo->scrny);
+    struct SHEET *sht_back = sheet_alloc(0, 0, binfo->scrnx, binfo->scrny, buf_back);
     sheet_updown(sht_back, 1);              // 背景图层
 
     unsigned char *buf_win = (unsigned char *)memman_alloc_4k(160 * 52);
-    make_window8(buf_win, 160, 52, "Counter");
+    make_window8(buf_win, 160, 52, "Window");
     struct SHEET *sht_win = sheet_alloc(80, 72, 160, 52, buf_win);
+    make_textbox8(sht_win, 8, 28, 144, 16, COL8_FFFFFF);
     sheet_updown(sht_win, 2);               // 窗口图层
 
     unsigned char buf_mouse[16 * 16];
     init_mouse_cursor8(buf_mouse);
-    int mx = 160, my = 100;
+    int mx = binfo->scrnx/2, my = binfo->scrny/2;
     struct SHEET *sht_mouse = sheet_alloc(mx, my, 16, 16, buf_mouse);
     sheet_updown(sht_mouse, 3);             // 鼠标图层
 
@@ -76,16 +80,17 @@ void DogOS_main(void) {
     timer_init(timer3, &timerfifo, 1);
     timer_settime(timer3, 50);
 
+    static char keytable[0x54] = {
+        0,   0,   '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '^', 0,   0,
+        'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '@', '[', 0,   0,   'A', 'S',
+        'D', 'F', 'G', 'H', 'J', 'K', 'L', ';', ':', 0,   0,   ']', 'Z', 'X', 'C', 'V',
+        'B', 'N', 'M', ',', '.', '/', 0,   '*', 0,   ' ', 0,   0,   0,   0,   0,   0,
+        0,   0,   0,   0,   0,   0,   0,   '7', '8', '9', '-', '4', '5', '6', '+', '1',
+        '2', '3', '0', '.'
+	};
+    int cursor_x = 8, cursor_c = COL8_FFFFFF;
 
     for(;;) {
-        // 计数器，结果显示在窗口图层
-        for(int i = 0; i < 4; i++) {
-            data = ((unsigned char *)&TIMERS.count)[3-i];
-            c2hex(s+(2*i), data);
-        }
-        s[8] = 0;
-        putfonts8_asc_sht(sht_win, 40, 28, COL8_C6C6C6, COL8_000000, s, 8);
-
         io_hlt();
 
         // 键盘中断响应
@@ -95,6 +100,24 @@ void DogOS_main(void) {
             io_sti();
             c2hex(s, data);
             putfonts8_asc_sht(sht_back, 0, 16, COL8_008484, COL8_FFFFFF, s, 2);
+
+            // 可显示字符
+            if(data < 0x54 && keytable[data] && cursor_x < 144) {
+                s[0] = keytable[data];
+                s[1] = 0;
+                putfonts8_asc_sht(sht_win, cursor_x, 28, COL8_FFFFFF, COL8_000000, s, 1);
+                cursor_x += 8;
+            }
+
+            // 退格键
+            if(data == 0x0e && cursor_x > 8) {
+                putfonts8_asc_sht(sht_win, cursor_x, 28, COL8_FFFFFF, COL8_000000, " ", 1);
+                cursor_x -= 8;
+            }
+
+            // 光标再显示
+            boxfill8(sht_win->buf, sht_win->xs, cursor_x, 28, cursor_x+7, 43, cursor_c);
+            sheet_refresh(sht_win, cursor_x, 28, cursor_x+8, 44);
         }
 
         // 鼠标中断响应
@@ -118,9 +141,12 @@ void DogOS_main(void) {
                 my += mdec.y;
                 if(mx < 0) mx = 0;
                 if(my < 0) my = 0;
-                if(mx > 320 - 1) mx = 320 - 1;
-                if(my > 200 - 1) my = 200 - 1;
+                if(mx > binfo->scrnx - 1) mx = binfo->scrnx - 1;
+                if(my > binfo->scrny - 1) my = binfo->scrny - 1;
                 sheet_slide(sht_mouse, mx, my);
+
+                // 按下左键，移动窗口
+                if(mdec.btn & 0x01) sheet_slide(sht_win, mx-80, my-8);
             }
         }
 
@@ -140,13 +166,14 @@ void DogOS_main(void) {
             case 0:
                 if (data) {
                     timer3->data = 0;
-                    boxfill8(buf_back, 320, 0, 64, 7, 80, COL8_FFFFFF);
+                    cursor_c = COL8_000000;
                 } else {
                     timer3->data = 1;
-                    boxfill8(buf_back, 320, 0, 64, 7, 80, COL8_008484);
+                    cursor_c = COL8_FFFFFF;
                 }
                 timer_settime(timer3, 50);
-                sheet_refresh(sht_back, 0, 64, 7, 80);
+                boxfill8(sht_win->buf, sht_win->xs, cursor_x, 28, cursor_x+7, 43, cursor_c);
+                sheet_refresh(sht_win, cursor_x, 28, cursor_x+8, 44);
                 break;
             }
         }
@@ -220,4 +247,17 @@ void putfonts8_asc_sht(struct SHEET *sht, int x, int y, int b, int c, char *s, i
     boxfill8(sht->buf, sht->xs, x, y, x + l * 8 - 1, y + 15, b);
     putfonts8_asc(sht->buf, sht->xs, x, y, c, s);
     sheet_refresh(sht, x, y, x + l * 8, y + 16);
+}
+
+void make_textbox8(struct SHEET *sht, int x0, int y0, int sx, int sy, int c) {
+	int x1 = x0 + sx, y1 = y0 + sy;
+	boxfill8(sht->buf, sht->xs, x0 - 2, y0 - 3, x1 + 1, y0 - 3, COL8_848484);
+	boxfill8(sht->buf, sht->xs, x0 - 3, y0 - 3, x0 - 3, y1 + 1, COL8_848484);
+	boxfill8(sht->buf, sht->xs, x0 - 3, y1 + 2, x1 + 1, y1 + 2, COL8_FFFFFF);
+	boxfill8(sht->buf, sht->xs, x1 + 2, y0 - 3, x1 + 2, y1 + 2, COL8_FFFFFF);
+	boxfill8(sht->buf, sht->xs, x0 - 1, y0 - 2, x1 + 0, y0 - 2, COL8_000000);
+	boxfill8(sht->buf, sht->xs, x0 - 2, y0 - 2, x0 - 2, y1 + 0, COL8_000000);
+	boxfill8(sht->buf, sht->xs, x0 - 2, y1 + 1, x1 + 0, y1 + 1, COL8_C6C6C6);
+	boxfill8(sht->buf, sht->xs, x1 + 1, y0 - 2, x1 + 1, y1 + 1, COL8_C6C6C6);
+	boxfill8(sht->buf, sht->xs, x0 - 1, y0 - 1, x1 + 0, y1 + 0, c);
 }

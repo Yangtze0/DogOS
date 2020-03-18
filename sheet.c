@@ -4,7 +4,11 @@
 extern unsigned char *VRAM;
 struct SHEETCTL SHEETS;
 
-void shtctl_init(struct SHEETCTL *ss) {
+void shtctl_init(struct SHEETCTL *ss, unsigned char *vram, int xs, int ys) {
+    ss->vram = vram;
+    ss->vmap = (unsigned char *) memman_alloc_4k(xs * ys);
+    ss->xs = xs;
+    ss->ys = ys;
     ss->top = 0;                        // 无图层
     for (int i = 0; i < MAX_SHEETS; i++) {
         ss->sheets0[i].flags = 0;       // 标记为未使用
@@ -84,8 +88,8 @@ void sheet_refreshmap(int h0, int x0, int y0, int x1, int y1) {
     int vx, vy, bx0, by0, bx1, by1;
     unsigned char *buf;
     struct SHEET *sht;
-    if (x1 > 320) x1 = 320;
-    if (y1 > 200) y1 = 200;
+    if (x1 > SHEETS.xs) x1 = SHEETS.xs;
+    if (y1 > SHEETS.ys) y1 = SHEETS.ys;
     for (int h = h0; h <= SHEETS.top; h++) {
         sht = SHEETS.sheets[h];
         buf = sht->buf;
@@ -102,7 +106,7 @@ void sheet_refreshmap(int h0, int x0, int y0, int x1, int y1) {
             for (int bx = bx0; bx < bx1; bx++) {
                 vx = sht->x0 + bx;
                 if (buf[by * sht->xs + bx] != COL_INVISIBLE) {
-                    SHEETS.vmap[vy * 320 + vx] = h;
+                    SHEETS.vmap[vy * SHEETS.xs + vx] = h;
                 }
             }
         }
@@ -117,8 +121,10 @@ void sheet_refreshsub(int h0, int h1, int x0, int y0, int x1, int y1) {
     int vx, vy, bx0, by0, bx1, by1;
     unsigned char *buf, c;
     struct SHEET *sht;
-    if(x1 > 320) x1 = 320;
-    if(y1 > 200) y1 = 200;
+    if(x0 < 0) x0 = 0;
+    if(y0 < 0) y0 = 0;
+    if(x1 > SHEETS.xs) x1 = SHEETS.xs;
+    if(y1 > SHEETS.ys) y1 = SHEETS.ys;
     for (int h = h0; h <= h1; h++) {
         sht = SHEETS.sheets[h];
         buf = sht->buf;
@@ -135,8 +141,8 @@ void sheet_refreshsub(int h0, int h1, int x0, int y0, int x1, int y1) {
             for (int bx = bx0; bx < bx1; bx++) {
                 vx = sht->x0 + bx;
                 c = buf[by * sht->xs + bx];
-                if (SHEETS.vmap[vy * 320 + vx] == h) {
-                    VRAM[vy * 320 + vx] = c;
+                if (SHEETS.vmap[vy * SHEETS.xs + vx] == h) {
+                    SHEETS.vram[vy * SHEETS.xs + vx] = c;
                 }
             }
         }

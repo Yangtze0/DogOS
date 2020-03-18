@@ -2,7 +2,6 @@
 #include "dogos.h"
 
 extern char FONT[4096];
-unsigned char *VRAM = (unsigned char *)0xa0000; //  VGA320*200*8
 
 void init_palette(void) {
     static unsigned char table_rgb[16*3] = {
@@ -43,9 +42,7 @@ void boxfill8(unsigned char *vram, int xs, int x0, int y0, int x1, int y1, unsig
     }
 }
 
-void init_screen(unsigned char *vram) {
-    int xm = 320, ym = 200;
-
+void init_screen(unsigned char *vram, int xm, int ym) {
     boxfill8(vram, xm, 0,     0,      xm-1,   ym-29,  COL8_008484);
     boxfill8(vram, xm, 0,     ym-28,  xm-1,   ym-28,  COL8_C6C6C6);
     boxfill8(vram, xm, 0,     ym-27,  xm-1,   ym-27,  COL8_FFFFFF);
@@ -118,14 +115,6 @@ void init_mouse_cursor8(unsigned char *mouse) {
                 mouse[y * 16 + x] = COL_INVISIBLE;
                 break;
             }
-		}
-	}
-}
-
-void putblock8_8(unsigned char *vram, int x0, int y0, int sx, int sy, char *mouse) {
-	for (int y = 0; y < sy; y++) {
-		for (int x = 0; x < sx; x++) {
-			vram[(y0 + y) * 320 + (x0 + x)] = mouse[y * sx + x];
 		}
 	}
 }
