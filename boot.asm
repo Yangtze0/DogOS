@@ -133,7 +133,6 @@ keystatus:
 	mov dword [bx+0x14],0x00cf9200
 
 	;GDTR
-	mov word [cs:GDTR],23
 	lgdt [cs:GDTR]
 
     ;A20
@@ -163,7 +162,7 @@ setup:
     jmp [CORE]
 
 CORE	dd 0x00040000
-GDTR	dw 0x0000
+GDTR	dw 0xffff
 		dd 0x00010000
 
 times 510-($-$$) db 0

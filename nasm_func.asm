@@ -7,8 +7,9 @@
     GLOBAL  _io_in8, _io_in16, _io_in32
     GLOBAL  _io_out8, _io_out16, _io_out32
     GLOBAL  _io_load_eflags, _io_store_eflags
-    GLOBAL  _load_idtr
+    GLOBAL  _load_idtr, _load_tr
     GLOBAL  _load_cr0, _store_cr0
+    GLOBAL  _farjmp
 
     GLOBAL  _asm_inthandler20, _asm_inthandler21
     GLOBAL  _asm_inthandler27, _asm_inthandler2c
@@ -80,6 +81,10 @@ _load_idtr:             ;   void load_idtr(int limit, int addr);
     lidt [esp+6]
     ret
 
+_load_tr:               ;   void load_tr(int tr);
+    ltr [esp+4]
+    ret
+
 _load_cr0:              ;   int load_cr0(void);
     mov eax,cr0
     ret
@@ -87,6 +92,10 @@ _load_cr0:              ;   int load_cr0(void);
 _store_cr0:             ;   void store_cr0(int cr0);
     mov eax,[esp+4]
     mov cr0,eax
+    ret
+
+_farjmp:                ;   void farjmp(int eip, int cs);
+    jmp far [esp+4]
     ret
 
 _asm_inthandler20:
@@ -140,5 +149,3 @@ _asm_inthandler2c:
     pop ds
     pop es
     iretd
-
-

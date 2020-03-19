@@ -12,8 +12,10 @@ void io_out32(int port, int data);
 int io_load_eflags(void);
 void io_store_eflags(int eflags);
 void load_idtr(int limit, int addr);
+void load_tr(int tr);
 int load_cr0(void);
 void store_cr0(int cr0);
+void farjmp(int eip, int cs);
 void asm_inthandler20(void);
 void asm_inthandler21(void);
 void asm_inthandler27(void);
@@ -59,6 +61,21 @@ void init_mouse_cursor8(unsigned char *mouse);
 
 
 /* dsctbl.c */
+#define ADDR_IDT        0x00020000
+#define LIMIT_IDT       0x000007ff
+#define ADR_GDT         0x00010000
+#define LIMIT_GDT       0x0000ffff
+#define AR_DATA32_RW    0x4092
+#define AR_CODE32_ER    0x409a
+#define AR_INTGATE32    0x008e
+#define AR_TSS32        0x0089
+
+struct SEGMENT_DESCRIPTOR {
+    short limit_low, base_low;
+    char base_mid, access_right;
+    char limit_high, base_high;
+};
+
 struct GATE_DESCRIPTOR {
     short offset_low, selector;
     char dw_count, access_right;
@@ -66,6 +83,7 @@ struct GATE_DESCRIPTOR {
 };
 
 void init_idt(void);
+void set_segmdesc(struct SEGMENT_DESCRIPTOR *sd, unsigned int limit, int base, int ar);
 void set_gatedesc(struct GATE_DESCRIPTOR *gd, int offset, int selector, int ar);
 
 
@@ -200,3 +218,8 @@ void timer_free(struct TIMER *timer);
 void timer_init(struct TIMER *timer, struct FIFO8 *fifo, unsigned char data);
 void timer_settime(struct TIMER *timer, unsigned int timeout);
 void inthandler20(int *esp);
+
+
+/* mutitask.c */
+void mt_init(void);
+void mt_taskswitch(void);

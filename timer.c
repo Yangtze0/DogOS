@@ -1,6 +1,7 @@
 
 #include "dogos.h"
 
+extern struct TIMER *mt_timer;
 struct TIMERCTL TIMERS;
 
 void init_pit(void) {
@@ -45,10 +46,15 @@ void inthandler20(int *esp) {
     io_out8(PIC0_OCW2, 0x60);
     TIMERS.count++;
     if(TIMERS.count < TIMERS.next) return;
+    char ts = 0;
 
     for(int i = 0; i < MAX_TIMER; i++) {
         if(TIMERS.timer[i].flags == TIMER_FLAGS_USING) {
             if(TIMERS.timer[i].timeout <= TIMERS.count) {
+                if(&TIMERS.timer[i] == mt_timer) {
+                    ts = 1;
+                    break;
+                }
                 TIMERS.timer[i].flags = TIMER_FLAGS_ALLOC;
                 fifo8_put(TIMERS.timer[i].fifo, TIMERS.timer[i].data);
             } else if(TIMERS.timer[i].timeout < TIMERS.next) {
@@ -56,4 +62,6 @@ void inthandler20(int *esp) {
             }
         }
     }
+
+    if(ts) mt_taskswitch();
 }
