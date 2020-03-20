@@ -1,7 +1,7 @@
 
 #include "dogos.h"
 
-extern struct TIMER *mt_timer;
+extern struct TIMER *task_timer;
 struct TIMERCTL TIMERS;
 
 void init_pit(void) {
@@ -51,7 +51,7 @@ void inthandler20(int *esp) {
     for(int i = 0; i < MAX_TIMER; i++) {
         if(TIMERS.timer[i].flags == TIMER_FLAGS_USING) {
             if(TIMERS.timer[i].timeout <= TIMERS.count) {
-                if(&TIMERS.timer[i] == mt_timer) {
+                if(&TIMERS.timer[i] == task_timer) {
                     ts = 1;
                     break;
                 }
@@ -63,5 +63,5 @@ void inthandler20(int *esp) {
         }
     }
 
-    if(ts) mt_taskswitch();
+    if(ts) task_switch();
 }

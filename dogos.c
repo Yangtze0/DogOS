@@ -14,14 +14,7 @@ void make_window8(unsigned char *buf, int xsize, int ysize, char *title);
 void make_textbox8(struct SHEET *sht, int x0, int y0, int sx, int sy, int c);
 void c2hex(char *s, unsigned char data);
 
-struct TSS32 {
-    int backlink, esp0, ss0, esp1, ss1, esp2, ss2, cr3;
-    int eip, eflags, eax, ecx, edx, ebx, esp, ebp, esi, edi;
-    int es, cs, ss, ds, fs, gs;
-    int ldtr, iomap;
-};
-
-void task_b_main(void);
+void task_b_main(struct SHEET *sht_back);
 
 void DogOS_main(void) {
     // 系统信息
@@ -37,8 +30,9 @@ void DogOS_main(void) {
     struct MOUSE_DEC mdec;
     enable_mouse(&mdec);
     char keybuf[32], mousebuf[128];
-    fifo8_init(&KEYBOARD, 32, keybuf);
-    fifo8_init(&MOUSE, 128, mousebuf);
+    struct TASK *task_main = task_init();
+    fifo8_init(&KEYBOARD, 32, keybuf, task_main);
+    fifo8_init(&MOUSE, 128, mousebuf, task_main);
 
     // 初始0x00200000以上内存可用
     memman_init(&MEMORY);
@@ -51,7 +45,6 @@ void DogOS_main(void) {
     unsigned char *buf_back = (unsigned char *)memman_alloc_4k(binfo->scrnx * binfo->scrny);
     init_screen(buf_back, binfo->scrnx, binfo->scrny);
     struct SHEET *sht_back = sheet_alloc(0, 0, binfo->scrnx, binfo->scrny, buf_back);
-    *((int *) 0x7e0c) = (int) sht_back;
     sheet_updown(sht_back, 1);              // 背景图层
 
     unsigned char *buf_win = (unsigned char *)memman_alloc_4k(160 * 52);
@@ -60,11 +53,22 @@ void DogOS_main(void) {
     make_textbox8(sht_win, 8, 28, 144, 16, COL8_FFFFFF);
     sheet_updown(sht_win, 2);               // 窗口图层
 
+    // 多任务切换
+    struct TASK *task_b = task_alloc();
+    task_b->tss.esp = memman_alloc_4k(64 * 1024) + 64 * 1024 - 8;
+    task_b->tss.eip = (int) &task_b_main;
+    unsigned char *buf_win_b = (unsigned char *)memman_alloc_4k(160 * 52);
+    make_window8(buf_win_b, 160, 52, "task_b");
+    struct SHEET *sht_win_b = sheet_alloc(80, 144, 160, 52, buf_win_b);
+    sheet_updown(sht_win_b, 3);             // 任务窗口图层
+    *((int *) (task_b->tss.esp + 4)) = (int) sht_win_b;
+    task_run(task_b);
+
     unsigned char buf_mouse[16 * 16];
     init_mouse_cursor8(buf_mouse);
     int mx = binfo->scrnx/2, my = binfo->scrny/2;
     struct SHEET *sht_mouse = sheet_alloc(mx, my, 16, 16, buf_mouse);
-    sheet_updown(sht_mouse, 3);             // 鼠标图层
+    sheet_updown(sht_mouse, 4);             // 鼠标图层
 
     // 内存容量测试，结果显示在背景图层
     unsigned char data = memtotal / (1024 * 1024);
@@ -78,7 +82,7 @@ void DogOS_main(void) {
     // 定时器
     struct FIFO8 timerfifo;
     char timerbuf[8];
-    fifo8_init(&timerfifo, 8, timerbuf);
+    fifo8_init(&timerfifo, 8, timerbuf, task_main);
     struct TIMER *timer1, *timer2, *timer3;
     timer1 = timer_alloc();
     timer_init(timer1, &timerfifo, 10);
@@ -89,34 +93,6 @@ void DogOS_main(void) {
     timer3 = timer_alloc();
     timer_init(timer3, &timerfifo, 1);
     timer_settime(timer3, 50);
-
-    // 任务切换
-    mt_init();
-    struct SEGMENT_DESCRIPTOR *gdt = (struct SEGMENT_DESCRIPTOR *) ADR_GDT;
-    struct TSS32 tss_a, tss_b;
-    tss_a.ldtr = 0;
-    tss_a.iomap = 0x40000000;
-    tss_b.ldtr = 0;
-    tss_b.iomap = 0x40000000;
-    set_segmdesc(gdt + 3, 103, (int) &tss_a, AR_TSS32);
-	set_segmdesc(gdt + 4, 103, (int) &tss_b, AR_TSS32);
-    load_tr(3 * 8);
-    tss_b.esp = memman_alloc_4k(64 * 1024) + 64 * 1024;
-    tss_b.eip = (int) &task_b_main;
-    tss_b.eflags = 0x00000202;
-    tss_b.eax = 0;
-    tss_b.ecx = 0;
-    tss_b.edx = 0;
-    tss_b.ebx = 0;
-    tss_b.ebp = 0;
-    tss_b.esi = 0;
-    tss_b.edi = 0;
-    tss_b.es = 8*2;
-    tss_b.cs = 8*1;
-    tss_b.ss = 8*2;
-    tss_b.ds = 8*2;
-    tss_b.fs = 8*2;
-    tss_b.gs = 8*2;
 
     // 键盘译码
     static char keytable[0x54] = {
@@ -130,7 +106,8 @@ void DogOS_main(void) {
     int cursor_x = 8, cursor_c = COL8_FFFFFF;
 
     for(;;) {
-        io_hlt();
+        // 主任务休眠，可被缓冲区写入唤醒
+        task_sleep(task_main);
 
         // 键盘中断响应
         while(fifo8_status(&KEYBOARD)) {
@@ -301,27 +278,19 @@ void make_textbox8(struct SHEET *sht, int x0, int y0, int sx, int sy, int c) {
 	boxfill8(sht->buf, sht->xs, x0 - 1, y0 - 1, x1 + 0, y1 + 0, c);
 }
 
-void task_b_main(void) {
+void task_b_main(struct SHEET *sht) {
     struct FIFO8 timerfifo;
     char timerbuf[8];
-    fifo8_init(&timerfifo, 8, timerbuf);
+    fifo8_init(&timerfifo, 8, timerbuf, 0);
     struct TIMER *timer_put;
     timer_put = timer_alloc();
     timer_init(timer_put, &timerfifo, 1);
     timer_settime(timer_put, 1);
 
-    struct SHEET *sht_back = (struct SHEET *) *((int *) 0x7e0c);
     int i, count = 0;
     unsigned char data;
-    char s[16];
-    s[0] = 't';
-    s[1] = 'a';
-    s[2] = 's';
-    s[3] = 'k';
-    s[4] = '_';
-    s[5] = 'b';
-    s[6] = ':';
-    s[15]= 0;
+    char s[9];
+    s[8]= 0;
 
     for (;;) {
         count++;
@@ -334,9 +303,9 @@ void task_b_main(void) {
             if (data) {
                 for(i = 0; i < 4; i++) {
                     data = ((unsigned char *)&count)[3-i];
-                    c2hex(s+7+(2*i), data);
+                    c2hex(s+(2*i), data);
                 }
-                putfonts8_asc_sht(sht_back, 0, 144, COL8_008484, COL8_FFFFFF, s, 15);
+                putfonts8_asc_sht(sht, 8, 28, COL8_C6C6C6, COL8_000000, s, 8);
                 timer_settime(timer_put, 1);
             }
         }

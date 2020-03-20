@@ -1,13 +1,14 @@
 
 #include "dogos.h"
 
-void fifo8_init(struct FIFO8 *fifo, int size, char *buf) {
+void fifo8_init(struct FIFO8 *fifo, int size, char *buf, struct TASK *task) {
     fifo->size = size;
     fifo->buf = buf;
     fifo->free = size;
     fifo->flags = 0;
     fifo->r = 0;
     fifo->w = 0;
+    fifo->task = task;
 }
 
 int fifo8_put(struct FIFO8 *fifo, unsigned char data) {
@@ -19,6 +20,9 @@ int fifo8_put(struct FIFO8 *fifo, unsigned char data) {
     fifo->r++;
     fifo->r %= fifo->size;
     fifo->free--;
+
+    // 任务唤醒
+    if(fifo->task && (fifo->task->flags != 2)) task_run(fifo->task);
     return 0;
 }
 
