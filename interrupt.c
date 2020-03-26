@@ -17,11 +17,28 @@ void init_pic(void) {
 
     io_out8(PIC0_IMR,   0xfb);  // PCI1以外全部禁止
     io_out8(PIC1_IMR,   0xff);  // 禁止所有中断
+}
 
-    init_pit();                 // 设置IRQ0定时器
+void init_idt(void) {
+    struct GATE_DESCRIPTOR *idt = (struct GATE_DESCRIPTOR *)ADDR_IDT;
 
-    io_out8(PIC0_IMR,   0xf8);  // 开放int20(定时器)、int21(键盘中断)
-	io_out8(PIC1_IMR,   0xef);  // 开放int2c(鼠标中断)
+    for (int i = 0; i < (LIMIT_IDT+1)/8; i++) {
+        set_gatedesc(idt + i, 0, 0, 0);
+    }
+
+    set_gatedesc(idt + 0x20, (int) asm_inthandler20, 0x0008, AR_INTGATE32);
+    set_gatedesc(idt + 0x21, (int) asm_inthandler21, 0x0008, AR_INTGATE32);
+	set_gatedesc(idt + 0x27, (int) asm_inthandler27, 0x0008, AR_INTGATE32);
+	set_gatedesc(idt + 0x2c, (int) asm_inthandler2c, 0x0008, AR_INTGATE32);
+    load_idtr(LIMIT_IDT, (int)idt);
+}
+
+void set_gatedesc(struct GATE_DESCRIPTOR *gd, int offset, int selector, int ar) {
+    gd->offset_low   = offset & 0xffff;
+    gd->selector     = selector;
+    gd->dw_count     = (ar >> 8) & 0xff;
+    gd->access_right = ar & 0xff;
+    gd->offset_high  = (offset >> 16) & 0xffff;
 }
 
 // inthandler20: timer.c

@@ -1,10 +1,10 @@
 
 #include "dogos.h"
 
-struct MEMMAN MEMORY;
+struct MEMORYCTL MEMORY;
 
 /* 内存容量测试 */
-unsigned int memtest(unsigned int start, unsigned int end) {
+int mtest(unsigned long start, unsigned long end) {
     char flg486 = 0;
     unsigned int eflg, cr0;
 
@@ -41,93 +41,60 @@ unsigned int memtest(unsigned int start, unsigned int end) {
 		store_cr0(cr0);
 	}
 
-	return i;
+	return i>>20;
 }
 
-void memman_init(struct MEMMAN *man) {
-    MEMORY.frees = 0;                         // 可用信息数目
-    MEMORY.maxfrees = 0;
-    MEMORY.lostsize = 0;                      // 释放失败内存大小
-    MEMORY.losts = 0;                         // 释放失败次数
+void init_memory(struct MEMORYCTL *mm) {
+    int i = 0;
+    for(; i < 64; i++) mm->bitmap[i] = 0xff;
+    for(; i < 256; i++) mm->bitmap[i] = 0x00;
+    mm->total = mtest(0x00400000, 0xbfffffff);
+    mm->free = ((mm->total<8)?(mm->total-2):(8-2))*1024/4;
 }
 
-/* 报告空闲内存大小 */
-unsigned int memman_total(void) {
-    unsigned int i, t = 0;
-    for (i = 0; i < MEMORY.frees; i++) {
-        t += MEMORY.free[i].size;
-    }
-    return t;
-}
-
-unsigned int memman_alloc(unsigned int size) {
-    unsigned int i, a;
-    for (i = 0; i < MEMORY.frees; i++) {      // 找到足够大的空闲内存
-        if (MEMORY.free[i].size >= size) {
-            a = MEMORY.free[i].addr;
-            MEMORY.free[i].addr += size;
-            MEMORY.free[i].size -= size;
-            if (MEMORY.free[i].size == 0) {
-                MEMORY.frees--;
-                for (; i < MEMORY.frees; i++) {
-                    MEMORY.free[i] = MEMORY.free[i + 1];
-                }
-            }
-            return a;                       // 可用空间地址
+unsigned long malloc_4k(unsigned int size) {
+    unsigned int m = 0, n = ((size + 0xfff) & 0xfffff000) >> 12;
+    unsigned long i, p, q;
+    for(i = 64*8; i < 256*8; i++) {
+        p = i / 8;
+        q = i % 8;
+        if(MEMORY.bitmap[p] & (1<<q)) {
+            m = 0;
+        } else {
+            m++;
         }
+        if(m == n) break;
     }
 
-    return 0;                               // 没有可用空间
+    if(i >= 256*8) return 0;
+    MEMORY.free -= n;
+
+    i = i - n + 1;
+    unsigned long addr = i << 12;
+    n = i + n;
+    for(; i < n; i++) {
+        p = i / 8;
+        q = i % 8;
+        MEMORY.bitmap[p] |= 1<<q;
+    }
+    return addr;
 }
 
-int memman_free(unsigned int addr, unsigned int size) {
-    int i, j;
-    for (i = 0; i < MEMORY.frees; i++) {
-        if (MEMORY.free[i].addr > addr) break;
-    }
-
-    // free[i - 1].addr <= addr < free[i].addr
-    if (MEMORY.free[i - 1].addr + MEMORY.free[i - 1].size == addr) {
-        MEMORY.free[i - 1].size += size;      // 与前一项合并
-        if (i < MEMORY.frees) {
-            if (addr + size == MEMORY.free[i].addr) {
-                MEMORY.free[i - 1].size += MEMORY.free[i].size;
-                MEMORY.frees--;
-                for (; i < MEMORY.frees; i++) {
-                    MEMORY.free[i] = MEMORY.free[i + 1];
-                }
-            }
+int mfree_4k(unsigned long addr, unsigned int size) {
+    unsigned int n = ((size + 0xfff) & 0xfffff000) >> 12;
+    unsigned long p;
+    unsigned long q;
+    addr >>= 12;
+    for(int i = 0; i < n; i++) {
+        p = addr / 8;
+        q = addr % 8;
+        if(MEMORY.bitmap[p] & (1<<q)) {
+            MEMORY.bitmap[p] ^= 1<<q;
+            MEMORY.free++;
+        } else {
+            return -1;
         }
-        return 0;
-	}
-
-    if (i < MEMORY.frees) {
-        if (addr + size == MEMORY.free[i].addr) {
-            MEMORY.free[i].addr = addr;
-            MEMORY.free[i].size += size;
-            return 0;
-        }
+        addr++;
     }
-
-    if (MEMORY.frees < MEMMAN_FREES) {
-        for (j = MEMORY.frees; j > i; j--) MEMORY.free[j] = MEMORY.free[j - 1];
-        MEMORY.frees++;
-        if (MEMORY.maxfrees < MEMORY.frees) MEMORY.maxfrees = MEMORY.frees;
-        MEMORY.free[i].addr = addr;
-        MEMORY.free[i].size = size;
-        return 0;
-    }
-
-    // 释放失败
-    MEMORY.losts++;
-    MEMORY.lostsize += size;
-    return -1;
-}
-
-unsigned int memman_alloc_4k(unsigned int size) {
-    return memman_alloc((size + 0xfff) & 0xfffff000);
-}
-
-int memman_free_4k(unsigned int addr, unsigned int size) {
-    return memman_free(addr, (size + 0xfff) & 0xfffff000);
+    return 0;
 }

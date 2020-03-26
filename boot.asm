@@ -132,7 +132,7 @@ keystatus:
 	mov dword [bx+0x10],0x0000ffff
 	mov dword [bx+0x14],0x00cf9200
 
-	;GDTR
+	;GDT:0x00010000~0x0001ffff
 	lgdt [cs:GDTR]
 
     ;A20

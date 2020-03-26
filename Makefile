@@ -23,10 +23,13 @@ default : dogos.img
 
 
 # 基本规则
-OBJS =	dogos.o sheet.o graphic.o dsctbl.o int.o mutitask.o timer.o \
-		fifo.o memory.o mouse.o keyboard.o nasm_func.o myfont.o
+OBJS =	dogos.o sheet.o graphic.o interrupt.o multitask.o timer.o \
+		fifo.o memory.o mouse.o keyboard.o string.o nasm_func.o myfont.o
 
-dogos : $(OBJS)		# To be improved : __nl_symbol_ptr
+string.o : string.c
+	$(GCC) -c -fno-stack-protector string.c -o string.o
+
+dogos : $(OBJS)		# To be improved ? : __nl_symbol_ptr
 	$(LD) $(OBJS) -o dogos -e _DogOS_main	\
 		-macosx_version_min 10.11 -preload -image_base 0x00100000 
 

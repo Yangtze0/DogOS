@@ -23,6 +23,10 @@ void asm_inthandler2c(void);
 
 
 /* boot.asm */
+#define SEL_CODE        0x08
+#define SEL_DATA        0x10
+#define ADDR_BOOTINFO   0x00007e00
+
 struct BOOTINFO {
     short reserve;
     char leds;
@@ -30,64 +34,46 @@ struct BOOTINFO {
     short scrnx, scrny;
     unsigned char *vram;
 };
-#define ADR_BOOTINFO    0x00007e00
 
 
 /* graphic.c */
-#define COL8_000000     0
-#define COL8_FF0000     1
-#define COL8_00FF00     2
-#define COL8_FFFF00     3
-#define COL8_0000FF     4
-#define COL8_FF00FF     5
-#define COL8_00FFFF     6
-#define COL8_FFFFFF     7
-#define COL8_C6C6C6     8
-#define COL8_840000     9
-#define COL8_008400     10
-#define COL8_848400     11
-#define COL8_000084     12
-#define COL8_840084     13
-#define COL8_008484     14
-#define COL8_848484     15
-#define COL_INVISIBLE   99
+#define COL8_000000     0   // 黑
+#define COL8_FF0000     1   // 亮红
+#define COL8_00FF00     2   // 亮绿
+#define COL8_FFFF00     3   // 亮黄
+#define COL8_0000FF     4   // 亮蓝
+#define COL8_FF00FF     5   // 亮紫
+#define COL8_00FFFF     6   // 浅亮蓝
+#define COL8_FFFFFF     7   // 白
+#define COL8_C6C6C6     8   // 亮灰
+#define COL8_840000     9   // 暗红
+#define COL8_008400     10  // 暗绿
+#define COL8_848400     11  // 暗黄
+#define COL8_000084     12  // 暗青
+#define COL8_840084     13  // 暗紫
+#define COL8_008484     14  // 浅暗蓝
+#define COL8_848484     15  // 暗灰
+#define COL_INVISIBLE   99  // 透明
+
+#define MOUSEX          16
+#define MOUSEY          16
 
 void init_palette(void);
-void boxfill8(unsigned char *vram, int xs, int x0, int y0, int x1, int y1, unsigned char color);
-void init_screen(unsigned char *vram, int xm, int ym);
-void putfont8(unsigned char *vram, int xs, int x, int y, unsigned char color, char *font);
-void putfonts8_asc(unsigned char *vram, int xs, int x, int y, unsigned char color, char *s);
-void init_mouse_cursor8(unsigned char *mouse);
+void boxfill(unsigned char *buf, int bxs, int bx0, int by0, int bx1, int by1, unsigned char c);
+void init_screen(unsigned char *buf, int xs, int ys);
+void init_cursor(unsigned char *buf_mouse);
+void putstr8(unsigned char *buf, int xs, int bx0, int by0, unsigned char c, char *s);
 
 
-/* dsctbl.c */
-#define ADDR_IDT        0x00020000
-#define LIMIT_IDT       0x000007ff
-#define ADR_GDT         0x00010000
-#define LIMIT_GDT       0x0000ffff
-#define AR_DATA32_RW    0x4092
-#define AR_CODE32_ER    0x409a
-#define AR_INTGATE32    0x008e
-#define AR_TSS32        0x0089
-
-struct SEGMENT_DESCRIPTOR {
-    short limit_low, base_low;
-    char base_mid, access_right;
-    char limit_high, base_high;
-};
-
-struct GATE_DESCRIPTOR {
-    short offset_low, selector;
-    char dw_count, access_right;
-    short offset_high;
-};
-
-void init_idt(void);
-void set_segmdesc(struct SEGMENT_DESCRIPTOR *sd, unsigned int limit, int base, int ar);
-void set_gatedesc(struct GATE_DESCRIPTOR *gd, int offset, int selector, int ar);
+/* string.c */
+void * memset(void *s, int c, unsigned long count);
+void * memcpy(void *d, const void *s, unsigned long count);
+unsigned long strlen(const char *s);
+char *strcpy(char * dest, const char *src);
+int sprintf(char *s, const char *fmt, ...);
 
 
-/* int.c */
+/* interrupt.c */
 #define PIC0_ICW1   0x0020
 #define PIC0_OCW2   0x0020
 #define PIC0_IMR    0x0021
@@ -101,6 +87,18 @@ void set_gatedesc(struct GATE_DESCRIPTOR *gd, int offset, int selector, int ar);
 #define PIC1_ICW3   0x00a1
 #define PIC1_ICW4   0x00a1
 
+#define ADDR_IDT        0x00020000
+#define LIMIT_IDT       0x000007ff
+#define AR_INTGATE32    0x008e
+
+struct GATE_DESCRIPTOR {
+    short offset_low, selector;
+    char dw_count, access_right;
+    short offset_high;
+};
+
+void init_idt(void);
+void set_gatedesc(struct GATE_DESCRIPTOR *gd, int offset, int selector, int ar);
 void init_pic(void);
 void inthandler27(int *esp);
 
@@ -128,9 +126,15 @@ int fifo8_status(struct FIFO8 *fifo);
 #define KEYCMD_WRITE_MODE       0x60
 #define KBC_MODE                0x47
 
+struct KEYBOARDCTL {
+    char buffer[32];
+    struct FIFO8 fifo;
+    char keytable[0x54];
+};
+
 void inthandler21(int *esp);
 void wait_KBC_sendready(void);
-void init_keyboard(void);
+void init_keyboard(struct KEYBOARDCTL *kb);
 
 
 /* mouse.c */
@@ -142,78 +146,82 @@ struct MOUSE_DEC {
     int x, y, btn;
 };
 
+struct MOUSECTL {
+    char cursor[MOUSEX*MOUSEY];
+    char buffer[128];
+    struct FIFO8 fifo;
+    struct MOUSE_DEC mdec;
+};
+
 void inthandler2c(int *esp);
-void enable_mouse(struct MOUSE_DEC *mdec);
+void init_mouse(struct MOUSECTL *mouse);
 int mouse_decode(struct MOUSE_DEC *mdec, unsigned char dat);
 
 
 /* memory.c */
 #define EFLAGS_AC_BIT       0x00040000
 #define CR0_CACHE_DISABLE   0x60000000
-#define MEMMAN_FREES        4090
 
-struct FREEINFO {
-    unsigned int addr, size;
+struct MEMORYCTL {
+    unsigned char bitmap[256];  // 8MB
+    int total, free;            // 物理内存(MB), 空闲内存(4KB)
 };
 
-struct MEMMAN {
-    int frees, maxfrees, lostsize, losts;
-    struct FREEINFO free[MEMMAN_FREES];
-};
-
-unsigned int memtest(unsigned int start, unsigned int end);
-void memman_init(struct MEMMAN *man);
-unsigned int memman_total(void);
-unsigned int memman_alloc(unsigned int size);
-int memman_free(unsigned int addr, unsigned int size);
-unsigned int memman_alloc_4k(unsigned int size);
-int memman_free_4k(unsigned int addr, unsigned int size);
+void init_memory(struct MEMORYCTL *m);
+int mtest(unsigned long start, unsigned long end);
+unsigned long malloc_4k(unsigned int size);
+int mfree_4k(unsigned long addr, unsigned int size);
 
 
 /* sheet.c */
 #define MAX_SHEETS      256
 
 struct SHEET {
-    unsigned char *buf, height;     // 图层内容、高度
-    int x0, y0, xs, ys, flags;
+    int vx0, vy0, xs, ys;
+    unsigned char *buf, height, flags;  // 图层内容、高度、标志
 };
 
 struct SHEETCTL {
     unsigned char *vram, *vmap;
-    int xs, ys, top;
-    struct SHEET *sheets[MAX_SHEETS];
-    struct SHEET sheets0[MAX_SHEETS];
+    int vxs, vys, top;
+    struct SHEET *h[MAX_SHEETS];
+    struct SHEET sheet[MAX_SHEETS];
 };
 
-void shtctl_init(struct SHEETCTL *ss, unsigned char *vram, int xs, int ys);
-struct SHEET *sheet_alloc(int x0, int y0, int xs, int ys, unsigned char *buf);
+void init_shtctl(struct SHEETCTL *ss, struct BOOTINFO *binfo);
+struct SHEET *sheet_alloc(int vx0, int vy0, int bxs, int bys, unsigned char *buf);
 void sheet_updown(struct SHEET *sht, unsigned char height);
-void sheet_refreshmap(int h0, int x0, int y0, int x1, int y1);
-void sheet_refresh(struct SHEET *sht, int x0, int y0, int x1, int y1);
-void sheet_refreshsub(int h0, int h1, int x0, int y0, int x1, int y1);
-void sheet_slide(struct SHEET *sht, int x0, int y0);
+void sheet_refreshmap(int h0, int vx0, int vy0, int xs, int ys);
+void sheet_refreshsub(int h0, int h1, int vx0, int vy0, int xs, int ys);
+void sheet_refresh(struct SHEET *sht, int bx0, int by0, int bxs, int bys);
+void sheet_slide(struct SHEET *sht, int dx, int dy);
 void sheet_free(struct SHEET *sht);
+void sheet_make_window(struct SHEET *sht, char *title);
+void sheet_make_textbox(struct SHEET *sht, int bx0, int by0, int bxs, int bys, int c);
+void sheet_putstr(struct SHEET *sht, int bx0, int by0, char *s, int l, int b, int c);
 
 
 /* timer.c */
 #define PIT_CTRL    0x0043
 #define PIT_CNT0    0x0040
-#define MAX_TIMER   500
+#define MAX_TIMER   100
 #define TIMER_FLAGS_ALLOC   1   // 定时器已配置
 #define TIMER_FLAGS_USING   2   // 定时器已运行
 
 struct TIMER {
+    struct TIMER *next;
     unsigned int timeout, flags;
     struct FIFO8 *fifo;
     unsigned char data;
 };
 
 struct TIMERCTL {
-    unsigned int count, next;
+    unsigned int time;
+    struct TIMER *t0;
     struct TIMER timer[MAX_TIMER];
 };
 
-void init_pit(void);
+void init_pit(struct TIMERCTL *timers);
 struct TIMER *timer_alloc(void);
 void timer_free(struct TIMER *timer);
 void timer_init(struct TIMER *timer, struct FIFO8 *fifo, unsigned char data);
@@ -222,30 +230,44 @@ void inthandler20(int *esp);
 
 
 /* mutitask.c */
+#define ADDR_GDT        0x00010000
+#define AR_TSS32        0x0089
 #define MAX_TASKS       100
 #define TASK_GDT0       3
 
+#define TASK_UNUSE      0
+#define TASK_SLEEP      1
+#define TASK_RUNNING    2
+
+struct SEGMENT_DESCRIPTOR {
+    short limit_low, base_low;
+    char base_mid, access_right;
+    char limit_high, base_high;
+};
+
 struct TSS32 {
-    int backlink, esp0, ss0, esp1, ss1, esp2, ss2, cr3;
-    int eip, eflags, eax, ecx, edx, ebx, esp, ebp, esi, edi;
-    int es, cs, ss, ds, fs, gs;
-    int ldtr, iomap;
+    unsigned long backlink, esp0, ss0, esp1, ss1, esp2, ss2, cr3;
+    unsigned long eip, eflags, eax, ecx, edx, ebx, esp, ebp, esi, edi;
+    unsigned long es, cs, ss, ds, fs, gs;
+    unsigned long ldtr, iomap;
 };
 
 struct TASK {
+    struct TASK *next;
     int sel, flags;
     struct TSS32 tss;
 };
 
 struct TASKCTL {
-    int running;        // 运行任务数量
-    int now;            // 当前任务标识
-    struct TASK *tasks[MAX_TASKS];
-    struct TASK tasks0[MAX_TASKS];
+    struct TASK *now;
+    struct TASK *main;
+    struct TASK tasks[MAX_TASKS];
 };
 
-struct TASK *task_init(void);
+void set_segmdesc(struct SEGMENT_DESCRIPTOR *sd, unsigned int limit, int base, int ar);
+void init_multitask(struct TASKCTL *mt);
 struct TASK *task_alloc(void);
 void task_run(struct TASK *task);
 void task_switch(void);
 void task_sleep(struct TASK *task);
+void task_start(unsigned long task_entry);

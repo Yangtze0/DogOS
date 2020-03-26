@@ -1,20 +1,21 @@
 
 #include "dogos.h"
 
-struct FIFO8 MOUSE;
+struct MOUSECTL MOUSE;
 
 void inthandler2c(int *esp) {
     io_out8(PIC1_OCW2, 0x64);   // 通知PIC1已经受理IRQ-12
     io_out8(PIC0_OCW2, 0x62);   // 通知PIC0已经受理IRQ-02
-    fifo8_put(&MOUSE, io_in8(PORT_KEYDAT));
+    fifo8_put(&MOUSE.fifo, io_in8(PORT_KEYDAT));
 }
 
-void enable_mouse(struct MOUSE_DEC *mdec) {
+void init_mouse(struct MOUSECTL *mouse) {
     wait_KBC_sendready();
     io_out8(PORT_KEYCMD, KEYCMD_SENDTO_MOUSE);
     wait_KBC_sendready();
     io_out8(PORT_KEYDAT, MOUSECMD_ENABLE);
-    mdec->phase = 0;
+    mouse->mdec.phase = 0;
+    fifo8_init(&mouse->fifo, 128, mouse->buffer, 0);
 }
 
 int mouse_decode(struct MOUSE_DEC *mdec, unsigned char dat) {

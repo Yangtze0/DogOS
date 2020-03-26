@@ -34,57 +34,37 @@ void init_palette(void) {
     io_store_eflags(eflags);
 }
 
-void boxfill8(unsigned char *vram, int xs, int x0, int y0, int x1, int y1, unsigned char color) {
-    for (int y = y0; y<= y1; y++) {
-        for (int x = x0; x <= x1; x++) {
-            if(color != COL_INVISIBLE) vram[y * xs + x] = color;
+void boxfill(unsigned char *buf, int xs, int bx0, int by0, int bx1, int by1, unsigned char c) {
+    for (int by = by0; by < by1; by++) {
+        for (int bx = bx0; bx < bx1; bx++) {
+            if(c != COL_INVISIBLE) buf[by * xs + bx] = c;
         }
     }
 }
 
-void init_screen(unsigned char *vram, int xm, int ym) {
-    boxfill8(vram, xm, 0,     0,      xm-1,   ym-29,  COL8_008484);
-    boxfill8(vram, xm, 0,     ym-28,  xm-1,   ym-28,  COL8_C6C6C6);
-    boxfill8(vram, xm, 0,     ym-27,  xm-1,   ym-27,  COL8_FFFFFF);
-    boxfill8(vram, xm, 0,     ym-26,  xm-1,   ym-1,   COL8_C6C6C6);
+void init_screen(unsigned char *buf, int xs, int ys) {
+    boxfill(buf, xs, 0,     0,     xs,     ys-28,  COL8_008484);
+    boxfill(buf, xs, 0,     ys-28, xs,     ys-27,  COL8_C6C6C6);
+    boxfill(buf, xs, 0,     ys-27, xs,     ys-26,  COL8_FFFFFF);
+    boxfill(buf, xs, 0,     ys-26, xs,     ys,     COL8_C6C6C6);
 
-    boxfill8(vram, xm, 3,     ym-24,  59,     ym-24,  COL8_FFFFFF);
-    boxfill8(vram, xm, 2,     ym-24,  2,      ym-4,   COL8_FFFFFF);
-    boxfill8(vram, xm, 3,     ym-4,   59,     ym-4,   COL8_848484);
-    boxfill8(vram, xm, 59,    ym-23,  59,     ym-5,   COL8_848484);
-    boxfill8(vram, xm, 2,     ym-3,   59,     ym-3,   COL8_000000);
-    boxfill8(vram, xm, 60,    ym-24,  60,     ym-3,   COL8_000000);
+    boxfill(buf, xs, 3,     ys-24, 60,     ys-23,  COL8_FFFFFF);
+    boxfill(buf, xs, 2,     ys-24, 3,      ys-3,   COL8_FFFFFF);
+    boxfill(buf, xs, 3,     ys-4,  60,     ys-3,   COL8_848484);
+    boxfill(buf, xs, 59,    ys-23, 60,     ys-4,   COL8_848484);
+    boxfill(buf, xs, 2,     ys-3,  60,     ys-2,   COL8_000000);
+    boxfill(buf, xs, 60,    ys-24, 61,     ys-2,   COL8_000000);
 
-    boxfill8(vram, xm, xm-47, ym-24,  xm-4,   ym-24,  COL8_848484);
-    boxfill8(vram, xm, xm-47, ym-23,  xm-47,  ym-4,   COL8_848484);
-    boxfill8(vram, xm, xm-47, ym-3,   xm-4,   ym-3,   COL8_FFFFFF);
-    boxfill8(vram, xm, xm-3,  ym-24,  xm-3,   ym-3,   COL8_FFFFFF);
+    boxfill(buf, xs, xs-47, ys-24, xs-3,   ys-23,  COL8_848484);
+    boxfill(buf, xs, xs-47, ys-23, xs-46,  ys-3,   COL8_848484);
+    boxfill(buf, xs, xs-47, ys-3,  xs-3,   ys-2,   COL8_FFFFFF);
+    boxfill(buf, xs, xs-3,  ys-24, xs-2,   ys-2,   COL8_FFFFFF);
 }
 
-void putfont8(unsigned char *vram, int xs, int x, int y, unsigned char color, char *font) {
-    unsigned char *row;
-    char data;
-    for(int i = 0; i < 16; i++) {
-        row = vram + (y + i) * xs + x;
-		data = font[i];
-        for(int j = 0; j < 8; j++) {
-            if(data & (0x80 >> j)) row[j] = color;
-        }
-    }
-}
-
-void putfonts8_asc(unsigned char *vram, int xs, int x, int y, unsigned char color, char *s) {
-    while (*s) {
-        putfont8(vram, xs, x, y, color, FONT + (*s) * 16);
-        x += 8;
-        s++;
-    }
-}
-
-void init_mouse_cursor8(unsigned char *mouse) {
+void init_cursor(unsigned char *mouse) {
     static char cursor[16][16] = {
-        "**************..",
-        "*OOOOOOOOOOO*...",
+        ".*************..",
+        "**OOOOOOOOOO*...",
         "*OOOOOOOOOO*....",
         "*OOOOOOOOO*.....",
         "*OOOOOOOO*......",
@@ -117,4 +97,20 @@ void init_mouse_cursor8(unsigned char *mouse) {
             }
 		}
 	}
+}
+
+void putstr8(unsigned char *buf, int xs, int bx0, int by0, unsigned char c, char *s) {
+    unsigned char *row;
+    char data;
+    while (*s) {
+        for(int i = 0; i < 16; i++) {
+            row = buf + (by0 + i) * xs + bx0;
+		    data = (FONT+(*s)*16)[i];
+            for(int j = 0; j < 8; j++) {
+                if(data & (0x80 >> j)) row[j] = c;
+            }
+        }
+        bx0 += 8;
+        s++;
+    }
 }

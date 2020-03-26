@@ -22,7 +22,7 @@ int fifo8_put(struct FIFO8 *fifo, unsigned char data) {
     fifo->free--;
 
     // 任务唤醒
-    if(fifo->task && (fifo->task->flags != 2)) task_run(fifo->task);
+    if(fifo->task && (fifo->task->flags == TASK_SLEEP)) fifo->task->flags = TASK_RUNNING;
     return 0;
 }
 
