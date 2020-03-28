@@ -64,8 +64,11 @@ struct SHEET *sheet_alloc(int vx0, int vy0, int xs, int ys, unsigned char *buf) 
 void sheet_updown(struct SHEET *sht, unsigned char height) {
     unsigned char h, old = sht->height;     // 保存设置前的高度信息
 
-    if (height == old) return;
-    if (height > SHEETS.top) height = SHEETS.top;
+    if(height == old) return;
+    if(height >= SHEETS.top) {
+        if(old) height = SHEETS.top - 1;
+        else height = SHEETS.top;
+    }
     sht->height = height;                   // 设定高度
 
     // 对SHEETS.sht[]重新排序
@@ -103,7 +106,7 @@ void sheet_updown(struct SHEET *sht, unsigned char height) {
             SHEETS.top++;
         }
         sheet_refreshmap(height, sht->vx0, sht->vy0, sht->xs, sht->ys);
-        sheet_refreshsub(height, height, sht->vx0, sht->vy0, sht->xs, sht->ys);
+        sheet_refreshsub(height-1, height, 0, 0, SHEETS.vxs, SHEETS.vys);
     }
 }
 
@@ -169,7 +172,13 @@ void sheet_refreshsub(int h0, int h1, int vx0, int vy0, int xs, int ys) {
             for (int bx = bx0; bx < bx1; bx++) {
                 vx = sht->vx0 + bx;
                 if (SHEETS.vmap[vy * SHEETS.vxs + vx] == h) {
-                    SHEETS.vram[vy * SHEETS.vxs + vx] = buf[by * sht->xs + bx];
+                    if(buf[by * sht->xs + bx] == COL_WIN) {
+                        if(h == SHEETS.top - 1) SHEETS.vram[vy * SHEETS.vxs + vx] = COL8_000084;
+                        else SHEETS.vram[vy * SHEETS.vxs + vx] = COL8_848484;
+                    } else if(buf[by * sht->xs + bx] == COL_WINFONT) {
+                        if(h == SHEETS.top - 1) SHEETS.vram[vy * SHEETS.vxs + vx] = COL8_FFFFFF;
+                        else SHEETS.vram[vy * SHEETS.vxs + vx] = COL8_C6C6C6;
+                    } else SHEETS.vram[vy * SHEETS.vxs + vx] = buf[by * sht->xs + bx];
                 }
             }
         }
@@ -226,10 +235,10 @@ void sheet_make_window(struct SHEET *sht, char *title) {
     boxfill(sht->buf, xs, xs-2, 1,      xs-1,   ys-1,   COL8_848484);
     boxfill(sht->buf, xs, xs-1, 0,      xs,     ys,     COL8_000000);
     boxfill(sht->buf, xs, 2,    2,      xs-2,   ys-2,   COL8_C6C6C6);
-    boxfill(sht->buf, xs, 3,    3,      xs-3,   21,     COL8_000084);
+    boxfill(sht->buf, xs, 3,    3,      xs-3,   21,     COL_WIN);
     boxfill(sht->buf, xs, 1,    ys-2,   xs-1,   ys-1,   COL8_848484);
     boxfill(sht->buf, xs, 0,    ys-1,   xs,     ys,     COL8_000000);
-    putstr8(sht->buf, xs, 24, 4, COL8_FFFFFF, title);
+    putstr8(sht->buf, xs, 24, 4, COL_WINFONT, title);
 
     char c;
     for (int y = 0; y < 14; y++) {

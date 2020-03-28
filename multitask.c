@@ -4,6 +4,12 @@
 struct TASKCTL TASKS;
 struct TIMER *task_timer;
 
+void Task_idle(void) {
+    for(;;) {
+        io_hlt();
+    }
+}
+
 void init_multitask(struct TASKCTL *mt) {
     struct SEGMENT_DESCRIPTOR *gdt = (struct SEGMENT_DESCRIPTOR *)ADDR_GDT;
     for (int i = 0; i < MAX_TASKS; i++) {
@@ -15,9 +21,11 @@ void init_multitask(struct TASKCTL *mt) {
     mt->main->flags = TASK_RUNNING;
     mt->main->next = mt->main;
     mt->now = mt->main;
+    task_start((unsigned long)&Task_idle);
+
     load_tr(mt->main->sel);
     task_timer = timer_alloc();
-    timer_settime(task_timer, 2);
+    timer_settime(task_timer, 1);
 }
 
 void set_segmdesc(struct SEGMENT_DESCRIPTOR *sd, unsigned int limit, int base, int ar) {
@@ -83,10 +91,7 @@ void task_switch(void) {
 
 void task_sleep(struct TASK *task) {
     if(task->flags == TASK_RUNNING) task->flags = TASK_SLEEP;
-    if(task == TASKS.now) {
-        task_switch();
-        io_hlt();
-    }
+    if(task == TASKS.now) task_switch();
 }
 
 void task_start(unsigned long task_entry) {

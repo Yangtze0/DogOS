@@ -43,7 +43,7 @@ void inthandler20(int *esp) {
     TIMERS.t0 = timer;
 
     if(ts) {
-        timer_settime(task_timer, 2);
+        timer_settime(task_timer, 1);
         task_switch();
     }
 }

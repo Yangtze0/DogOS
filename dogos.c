@@ -28,7 +28,7 @@ void DogOS_main(void) {
     init_memory(&MEMORY);       // 0x00200000以上地址可分配，支持8MB内存管理
 
     /* 初始化多任务管理 */
-    init_multitask(&TASKS);     // 任务切换间隔:20ms
+    init_multitask(&TASKS);  // 任务切换间隔:20ms
     KEYBOARD.fifo.task = TASKS.main;
     MOUSE.fifo.task = TASKS.main;
 
@@ -72,24 +72,25 @@ void DogOS_main(void) {
         task_sleep(TASKS.main);
 
         // 键盘中断响应
-        while(fifo8_status(&KEYBOARD.fifo)) {
+        while((sht_win->height == SHEETS.top-1) && fifo8_status(&KEYBOARD.fifo)) {
             io_cli();
-            unsigned char byte_key = fifo8_get(&KEYBOARD.fifo);
+            unsigned char byte_ascii = fifo8_get(&KEYBOARD.fifo);
             io_sti();
 
-            // 可显示字符
-            char k2c[2];
-            if(byte_key < 0x54 && KEYBOARD.keytable[byte_key] && cursor_x < 144) {
-                k2c[0] = KEYBOARD.keytable[byte_key];
-                k2c[1] = 0;
-                sheet_putstr(sht_win, cursor_x, 28, k2c, 1, COL8_FFFFFF, COL8_000000);
-                cursor_x += 8;
-            }
-
-            // 退格键
-            if(byte_key == 0x0e && cursor_x > 8) {
-                sheet_putstr(sht_win, cursor_x, 28, " ", 1, COL8_FFFFFF, COL8_000000);
-                cursor_x -= 8;
+            // 字符处理
+            char dbyte[2];
+            memset(dbyte, 0 ,2);
+            if(byte_ascii == 0x08) {    // 退格键
+                if(cursor_x > 8) {
+                    sheet_putstr(sht_win, cursor_x, 28, " ", 1, COL8_FFFFFF, COL8_000000);
+                    cursor_x -= 8;
+                }
+            } else {                    // 可显示字符
+                if(cursor_x < 144) {
+                    dbyte[0] = byte_ascii;
+                    sheet_putstr(sht_win, cursor_x, 28, dbyte, 1, COL8_FFFFFF, COL8_000000);
+                    cursor_x += 8;
+                }
             }
 
             // 光标再显示
@@ -106,10 +107,11 @@ void DogOS_main(void) {
                 int mdx = MOUSE.mdec.x, mdy = MOUSE.mdec.y;
                 sheet_slide(SHEETS.h[SHEETS.top], mdx, mdy);
 
-                // 按下左键拖动窗口
+                // 按下左键置顶、拖动窗口
                 if(MOUSE.mdec.btn & 0x01) {
                     byte_mouse = SHEETS.vmap[SHEETS.h[SHEETS.top]->vy0*SHEETS.vxs+SHEETS.h[SHEETS.top]->vx0];
                     if(byte_mouse) {
+                        if(byte_mouse != SHEETS.top-1) sheet_updown(SHEETS.h[byte_mouse], SHEETS.top-1);
                         if(SHEETS.h[SHEETS.top]->vx0 == 0 || SHEETS.h[SHEETS.top]->vx0 == SHEETS.vxs-1)
                             mdx = 0;
                         if(SHEETS.h[SHEETS.top]->vy0 == 0 || SHEETS.h[SHEETS.top]->vy0 == SHEETS.vys-1)
@@ -152,7 +154,7 @@ void Task_console(void) {
     sheet_make_window(sht, "console");
     sheet_make_textbox(sht, 8, 28, 240, 128, COL8_000000);
     sheet_updown(sht, SHEETS.top);
-    int cursor_x = 8, cursor_c = COL8_000000;
+    int cursor_x = 16, cursor_c = COL8_000000;
     
     struct FIFO8 timerfifo;
     char timerbuf[8];
@@ -166,10 +168,38 @@ void Task_console(void) {
 
     char s[40];
     unsigned int count = 0;
+    sheet_putstr(sht, 8, 28, ">", 1, COL8_000000, COL8_00FF00);
 
     for (;;) {
         count++;
-        //task_sleep(TASKS.now);
+        task_sleep(TASKS.now);
+
+        // 键盘中断响应
+        while((sht->height == SHEETS.top-1) && fifo8_status(&KEYBOARD.fifo)) {
+            io_cli();
+            unsigned char byte_ascii = fifo8_get(&KEYBOARD.fifo);
+            io_sti();
+
+            // 字符处理
+            char dbyte[2];
+            memset(dbyte, 0 ,2);
+            if(byte_ascii == 0x08) {    // 退格键
+                if(cursor_x > 16) {
+                    sheet_putstr(sht, cursor_x, 28, " ", 1, COL8_000000, COL8_000000);
+                    cursor_x -= 8;
+                }
+            } else {                    // 可显示字符
+                if(cursor_x < 144) {
+                    dbyte[0] = byte_ascii;
+                    sheet_putstr(sht, cursor_x, 28, dbyte, 1, COL8_000000, COL8_00FF00);
+                    cursor_x += 8;
+                }
+            }
+
+            // 光标再显示
+            boxfill(sht->buf, sht->xs, cursor_x, 28, cursor_x+8, 44, cursor_c);
+            sheet_refresh(sht, cursor_x, 28, cursor_x+8, 44);
+        }
 
         // 定时器超时响应
         while(fifo8_status(&timerfifo)) {

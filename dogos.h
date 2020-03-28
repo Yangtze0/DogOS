@@ -53,7 +53,10 @@ struct BOOTINFO {
 #define COL8_840084     13  // 暗紫
 #define COL8_008484     14  // 浅暗蓝
 #define COL8_848484     15  // 暗灰
+
 #define COL_INVISIBLE   99  // 透明
+#define COL_WINFONT     97  // 窗口标题字体色
+#define COL_WIN         98  // 窗口标题背景色
 
 #define MOUSEX          16
 #define MOUSEY          16
@@ -129,7 +132,9 @@ int fifo8_status(struct FIFO8 *fifo);
 struct KEYBOARDCTL {
     char buffer[32];
     struct FIFO8 fifo;
-    char keytable[0x54];
+    unsigned char shift, capslock;
+    char keytable0[0x80];
+    char keytable1[0x80];
 };
 
 void inthandler21(int *esp);
