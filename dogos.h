@@ -73,6 +73,7 @@ void * memset(void *s, int c, unsigned long count);
 void * memcpy(void *d, const void *s, unsigned long count);
 unsigned long strlen(const char *s);
 char *strcpy(char * dest, const char *src);
+int strcmp(const char *src, const char *dst);
 int sprintf(char *s, const char *fmt, ...);
 
 
@@ -178,34 +179,6 @@ unsigned long malloc_4k(unsigned int size);
 int mfree_4k(unsigned long addr, unsigned int size);
 
 
-/* sheet.c */
-#define MAX_SHEETS      256
-
-struct SHEET {
-    int vx0, vy0, xs, ys;
-    unsigned char *buf, height, flags;  // 图层内容、高度、标志
-};
-
-struct SHEETCTL {
-    unsigned char *vram, *vmap;
-    int vxs, vys, top;
-    struct SHEET *h[MAX_SHEETS];
-    struct SHEET sheet[MAX_SHEETS];
-};
-
-void init_shtctl(struct SHEETCTL *ss, struct BOOTINFO *binfo);
-struct SHEET *sheet_alloc(int vx0, int vy0, int bxs, int bys, unsigned char *buf);
-void sheet_updown(struct SHEET *sht, unsigned char height);
-void sheet_refreshmap(int h0, int vx0, int vy0, int xs, int ys);
-void sheet_refreshsub(int h0, int h1, int vx0, int vy0, int xs, int ys);
-void sheet_refresh(struct SHEET *sht, int bx0, int by0, int bxs, int bys);
-void sheet_slide(struct SHEET *sht, int dx, int dy);
-void sheet_free(struct SHEET *sht);
-void sheet_make_window(struct SHEET *sht, char *title);
-void sheet_make_textbox(struct SHEET *sht, int bx0, int by0, int bxs, int bys, int c);
-void sheet_putstr(struct SHEET *sht, int bx0, int by0, char *s, int l, int b, int c);
-
-
 /* timer.c */
 #define PIT_CTRL    0x0043
 #define PIT_CNT0    0x0040
@@ -266,6 +239,7 @@ struct TASK {
 struct TASKCTL {
     struct TASK *now;
     struct TASK *main;
+    struct TASK *idle;
     struct TASK tasks[MAX_TASKS];
 };
 
@@ -276,3 +250,43 @@ void task_run(struct TASK *task);
 void task_switch(void);
 void task_sleep(struct TASK *task);
 void task_start(unsigned long task_entry);
+
+
+/* sheet.c */
+#define MAX_SHEETS      256
+
+struct SHEET {
+    int vx0, vy0, xs, ys;
+    unsigned char *buf, height, flags;  // 图层内容、高度、标志
+    struct TASK *task;
+};
+
+struct SHEETCTL {
+    unsigned char *vram, *vmap;
+    int vxs, vys, top;
+    struct SHEET *h[MAX_SHEETS];
+    struct SHEET sheet[MAX_SHEETS];
+};
+
+void init_shtctl(struct SHEETCTL *ss, struct BOOTINFO *binfo);
+struct SHEET *sheet_alloc(int vx0, int vy0, int bxs, int bys, unsigned char *buf, struct TASK *task);
+void sheet_updown(struct SHEET *sht, unsigned char height);
+void sheet_refreshmap(int h0, int vx0, int vy0, int xs, int ys);
+void sheet_refreshsub(int h0, int h1, int vx0, int vy0, int xs, int ys);
+void sheet_refresh(struct SHEET *sht, int bx0, int by0, int bxs, int bys);
+void sheet_slide(struct SHEET *sht, int dx, int dy);
+void sheet_free(struct SHEET *sht);
+void sheet_make_window(struct SHEET *sht, char *title);
+void sheet_make_textbox(struct SHEET *sht, int bx0, int by0, int bxs, int bys, int c);
+void sheet_putstr(struct SHEET *sht, int bx0, int by0, char *s, int l, int b, int c);
+
+
+/* dogos.c */
+extern struct KEYBOARDCTL   KEYBOARD;
+extern struct MOUSECTL      MOUSE;
+extern struct MEMORYCTL     MEMORY;
+extern struct SHEETCTL      SHEETS;
+extern struct TIMERCTL      TIMERS;
+extern struct TASKCTL       TASKS;
+
+void Task_console(void);

@@ -33,6 +33,9 @@ void inthandler21(int *esp) {
     case 0x0e:                  // 退格
         fifo8_put(&KEYBOARD.fifo, 0x08);
         break;
+    case 0x1c:                  // 换行
+        fifo8_put(&KEYBOARD.fifo, 0x0a);
+        break;
     case 0x2a:
         KEYBOARD.shift |= 1;    // 左shift ON
         break;

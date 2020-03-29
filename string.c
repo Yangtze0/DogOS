@@ -220,10 +220,19 @@ void *memcpy(void *dest, const void *src, unsigned long count) {
     return dest;
 }
 
-char *strcpy(char * dest, const char *src) {
+char *strcpy(char *dest, const char *src) {
     char *tmp = dest;
     while ((*dest++ = *src++));
     return tmp;
+}
+
+int strcmp(const char *src, const char *dst) {
+    int ret = 0;
+    while(!(ret=*src-*dst) && *dst) {
+        src++;
+        dst++;
+    }
+    return ret;
 }
 
 unsigned long strlen(const char *s) {

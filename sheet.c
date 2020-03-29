@@ -1,7 +1,6 @@
 
 #include "dogos.h"
 
-extern struct MOUSECTL MOUSE;
 struct SHEETCTL SHEETS;
 
 void init_shtctl(struct SHEETCTL *ss, struct BOOTINFO *binfo) {
@@ -18,6 +17,7 @@ void init_shtctl(struct SHEETCTL *ss, struct BOOTINFO *binfo) {
     ss->sheet[0].ys = ss->vys;
     ss->sheet[0].height = 0;
     ss->sheet[0].buf = (unsigned char *)malloc_4k(ss->vxs * ss->vys);
+    ss->sheet[0].task = TASKS.main;
     ss->h[0] = &ss->sheet[0];
 
     // 初始化鼠标图层
@@ -28,6 +28,8 @@ void init_shtctl(struct SHEETCTL *ss, struct BOOTINFO *binfo) {
     ss->sheet[1].ys = MOUSEY;
     ss->sheet[1].height = 1;
     ss->sheet[1].buf = (unsigned char *)MOUSE.cursor;
+    ss->sheet[1].task = TASKS.main;
+    MOUSE.fifo.task = TASKS.main;
     ss->h[1] = &ss->sheet[1];
 
     ss->top = 1;
@@ -41,7 +43,7 @@ void init_shtctl(struct SHEETCTL *ss, struct BOOTINFO *binfo) {
     sheet_refreshsub(0, ss->top, 0, 0, ss->vxs, ss->vys);
 }
 
-struct SHEET *sheet_alloc(int vx0, int vy0, int xs, int ys, unsigned char *buf) {
+struct SHEET *sheet_alloc(int vx0, int vy0, int xs, int ys, unsigned char *buf, struct TASK *task) {
     struct SHEET *sht;
 
     for (int i = 0; i < MAX_SHEETS; i++) {
@@ -58,6 +60,7 @@ struct SHEET *sheet_alloc(int vx0, int vy0, int xs, int ys, unsigned char *buf) 
 	sht->xs = xs;
 	sht->ys = ys;
     sht->buf = buf;
+    sht->task = task;
     return sht;
 }
 
@@ -68,6 +71,7 @@ void sheet_updown(struct SHEET *sht, unsigned char height) {
     if(height >= SHEETS.top) {
         if(old) height = SHEETS.top - 1;
         else height = SHEETS.top;
+        KEYBOARD.fifo.task = sht->task;
     }
     sht->height = height;                   // 设定高度
 

@@ -22,6 +22,7 @@ void init_multitask(struct TASKCTL *mt) {
     mt->main->next = mt->main;
     mt->now = mt->main;
     task_start((unsigned long)&Task_idle);
+    mt->idle = mt->main->next;
 
     load_tr(mt->main->sel);
     task_timer = timer_alloc();
@@ -81,10 +82,18 @@ void task_switch(void) {
     struct TASK *ts = TASKS.now;
     for(;;) {
         ts = ts->next;
-        if(ts == TASKS.now) return;
+        if(ts == TASKS.now) {
+            if(ts->flags == TASK_SLEEP) {   // 所有task均在sleep
+                TASKS.idle->flags = TASK_RUNNING;
+                ts = TASKS.idle;
+                break;
+            }
+            return;
+        }
         if(ts->flags == TASK_RUNNING) break;
     }
 
+    if(ts != TASKS.idle && TASKS.idle->flags == TASK_RUNNING) TASKS.idle->flags = TASK_SLEEP;
     TASKS.now = ts;
     farjmp(0, ts->sel);
 }

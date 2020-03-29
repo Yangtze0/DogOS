@@ -4,15 +4,6 @@
 
 #include "dogos.h"
 
-extern struct KEYBOARDCTL   KEYBOARD;
-extern struct MOUSECTL      MOUSE;
-extern struct MEMORYCTL     MEMORY;
-extern struct SHEETCTL      SHEETS;
-extern struct TIMERCTL      TIMERS;
-extern struct TASKCTL       TASKS;
-
-void Task_console(void);
-
 void DogOS_main(void) {
     /* 获取启动配置信息 */
     struct BOOTINFO *binfo = (struct BOOTINFO *)ADDR_BOOTINFO;
@@ -29,8 +20,6 @@ void DogOS_main(void) {
 
     /* 初始化多任务管理 */
     init_multitask(&TASKS);  // 任务切换间隔:20ms
-    KEYBOARD.fifo.task = TASKS.main;
-    MOUSE.fifo.task = TASKS.main;
 
     /* 初始化图形界面 */
     init_palette();             // 初始化调色板
@@ -44,16 +33,11 @@ void DogOS_main(void) {
 
     // 启动其它任务
     task_start((unsigned long)&Task_console);
-
-
-    // 显示内存信息
-    char minfo[40];
-    sprintf(minfo, "Memory:%04dMB, support:8MB, free:%dKB", MEMORY.total, MEMORY.free*4);
-    sheet_putstr(SHEETS.h[0], 0, 0, minfo, strlen(minfo), COL_INVISIBLE, COL8_FFFFFF);
+    
 
     // 新建输入窗口
     unsigned char *buf_win = (unsigned char *)malloc_4k(160 * 52);
-    struct SHEET *sht_win = sheet_alloc(80, 72, 160, 52, buf_win);
+    struct SHEET *sht_win = sheet_alloc(80, 72, 160, 52, buf_win, TASKS.main);
     sheet_make_window(sht_win, "window");
     sheet_make_textbox(sht_win, 8, 28, 144, 16, COL8_FFFFFF);
     sheet_updown(sht_win, SHEETS.top);
@@ -80,17 +64,22 @@ void DogOS_main(void) {
             // 字符处理
             char dbyte[2];
             memset(dbyte, 0 ,2);
-            if(byte_ascii == 0x08) {    // 退格键
+            switch(byte_ascii) {
+            case 0x08:  // 退格
                 if(cursor_x > 8) {
                     sheet_putstr(sht_win, cursor_x, 28, " ", 1, COL8_FFFFFF, COL8_000000);
                     cursor_x -= 8;
                 }
-            } else {                    // 可显示字符
+                break;
+            case 0x0a:  // 回车
+                break;
+            default:    // 可显示字符
                 if(cursor_x < 144) {
                     dbyte[0] = byte_ascii;
                     sheet_putstr(sht_win, cursor_x, 28, dbyte, 1, COL8_FFFFFF, COL8_000000);
                     cursor_x += 8;
                 }
+                break;
             }
 
             // 光标再显示
@@ -111,7 +100,10 @@ void DogOS_main(void) {
                 if(MOUSE.mdec.btn & 0x01) {
                     byte_mouse = SHEETS.vmap[SHEETS.h[SHEETS.top]->vy0*SHEETS.vxs+SHEETS.h[SHEETS.top]->vx0];
                     if(byte_mouse) {
-                        if(byte_mouse != SHEETS.top-1) sheet_updown(SHEETS.h[byte_mouse], SHEETS.top-1);
+                        if(byte_mouse != SHEETS.top-1) {
+                            sheet_updown(SHEETS.h[byte_mouse], SHEETS.top-1);
+                            KEYBOARD.fifo.task = SHEETS.h[SHEETS.top-1]->task;
+                        }
                         if(SHEETS.h[SHEETS.top]->vx0 == 0 || SHEETS.h[SHEETS.top]->vx0 == SHEETS.vxs-1)
                             mdx = 0;
                         if(SHEETS.h[SHEETS.top]->vy0 == 0 || SHEETS.h[SHEETS.top]->vy0 == SHEETS.vys-1)
@@ -138,93 +130,10 @@ void DogOS_main(void) {
                     cursor_c = COL8_FFFFFF;
                 }
                 timer_settime(timer_cursor, 50);
-                boxfill(sht_win->buf, sht_win->xs, cursor_x, 28, cursor_x+8, 44, cursor_c);
-                sheet_refresh(sht_win, cursor_x, 28, cursor_x+8, 44);
-                break;
-            default:
-                break;
-            }
-        }
-    }
-}
-
-void Task_console(void) {
-    unsigned char *sht_buf = (unsigned char *)malloc_4k(256 * 165);
-    struct SHEET *sht = sheet_alloc(80, 144, 256, 165, sht_buf);
-    sheet_make_window(sht, "console");
-    sheet_make_textbox(sht, 8, 28, 240, 128, COL8_000000);
-    sheet_updown(sht, SHEETS.top);
-    int cursor_x = 16, cursor_c = COL8_000000;
-    
-    struct FIFO8 timerfifo;
-    char timerbuf[8];
-    fifo8_init(&timerfifo, 8, timerbuf, TASKS.now);
-    struct TIMER *timer = timer_alloc();
-    timer_init(timer, &timerfifo, 1);
-    timer_settime(timer, 50);
-    struct TIMER *speed = timer_alloc();
-    timer_init(speed, &timerfifo, 2);
-    timer_settime(speed, 100);
-
-    char s[40];
-    unsigned int count = 0;
-    sheet_putstr(sht, 8, 28, ">", 1, COL8_000000, COL8_00FF00);
-
-    for (;;) {
-        count++;
-        task_sleep(TASKS.now);
-
-        // 键盘中断响应
-        while((sht->height == SHEETS.top-1) && fifo8_status(&KEYBOARD.fifo)) {
-            io_cli();
-            unsigned char byte_ascii = fifo8_get(&KEYBOARD.fifo);
-            io_sti();
-
-            // 字符处理
-            char dbyte[2];
-            memset(dbyte, 0 ,2);
-            if(byte_ascii == 0x08) {    // 退格键
-                if(cursor_x > 16) {
-                    sheet_putstr(sht, cursor_x, 28, " ", 1, COL8_000000, COL8_000000);
-                    cursor_x -= 8;
+                if(sht_win->height == SHEETS.top-1) {
+                    boxfill(sht_win->buf, sht_win->xs, cursor_x, 28, cursor_x+8, 44, cursor_c);
+                    sheet_refresh(sht_win, cursor_x, 28, cursor_x+8, 44);
                 }
-            } else {                    // 可显示字符
-                if(cursor_x < 144) {
-                    dbyte[0] = byte_ascii;
-                    sheet_putstr(sht, cursor_x, 28, dbyte, 1, COL8_000000, COL8_00FF00);
-                    cursor_x += 8;
-                }
-            }
-
-            // 光标再显示
-            boxfill(sht->buf, sht->xs, cursor_x, 28, cursor_x+8, 44, cursor_c);
-            sheet_refresh(sht, cursor_x, 28, cursor_x+8, 44);
-        }
-
-        // 定时器超时响应
-        while(fifo8_status(&timerfifo)) {
-            io_cli();
-            unsigned char data = fifo8_get(&timerfifo);
-            io_sti();
-            switch (data) {
-            case 2:
-                timer_settime(speed, 100);
-                sprintf(s, "Task_console speed = %08x l/s", count);
-                count = 0;
-                sheet_putstr(SHEETS.h[0], 0, 16, s, strlen(s), COL8_0000FF, COL8_FFFFFF);
-                break;
-            case 1:
-            case 0:
-                if (data) {
-                    timer->data = 0;
-                    cursor_c = COL8_000000;
-                } else {
-                    timer->data = 1;
-                    cursor_c = COL8_FFFFFF;
-                }
-                timer_settime(timer, 50);
-                boxfill(sht->buf, sht->xs, cursor_x, 28, cursor_x+8, 44, cursor_c);
-                sheet_refresh(sht, cursor_x, 28, cursor_x+8, 44);
                 break;
             default:
                 break;
