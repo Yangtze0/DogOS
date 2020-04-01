@@ -1,21 +1,22 @@
 ; DogOS nasm functions
 ; TAB=4
 
-[bits 32]
-
     GLOBAL  _io_hlt, _io_cli, _io_sti, _io_stihlt
     GLOBAL  _io_in8, _io_in16, _io_in32
     GLOBAL  _io_out8, _io_out16, _io_out32
     GLOBAL  _io_load_eflags, _io_store_eflags
     GLOBAL  _load_idtr, _load_tr
     GLOBAL  _load_cr0, _store_cr0
-    GLOBAL  _farjmp
+    GLOBAL  _farjmp, _farcall
 
+    EXTERN  _inthandler20, _inthandler21, _inthandler27, _inthandler2c
     GLOBAL  _asm_inthandler20, _asm_inthandler21
     GLOBAL  _asm_inthandler27, _asm_inthandler2c
-    EXTERN  _inthandler20, _inthandler21, _inthandler27, _inthandler2c
 
-section .text
+    EXTERN  _dogos_api
+    GLOBAL  _asm_dogos_api
+
+[bits 32]
 
 _io_hlt:                ;   void io_hlt(void);
     hlt
@@ -98,6 +99,10 @@ _farjmp:                ;   void farjmp(int eip, int cs);
     jmp far [esp+4]
     ret
 
+_farcall:               ;   void farcall(int eip, int cs);
+    call far [esp+4]
+    ret
+
 _asm_inthandler20:
     push es
     push ds
@@ -148,4 +153,13 @@ _asm_inthandler2c:
     popad
     pop ds
     pop es
+    iretd
+
+_asm_dogos_api:         ;   int 0x30
+    sti
+    pushad
+    pushad
+    call _dogos_api
+    add esp,32
+    popad
     iretd

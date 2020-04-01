@@ -19,7 +19,7 @@ void DogOS_main(void) {
     init_memory(&MEMORY);       // 0x00200000以上地址可分配，支持8MB内存管理
 
     /* 初始化多任务管理 */
-    init_multitask(&TASKS);  // 任务切换间隔:20ms
+    init_multitask(&TASKS);     // 时间片长度:10ms
 
     /* 初始化图形界面 */
     init_palette();             // 初始化调色板
@@ -31,7 +31,7 @@ void DogOS_main(void) {
     io_sti();                   // 开放中断
 
 
-    // 启动其它任务
+    // 启动终端
     task_start((unsigned long)&Task_console);
     
 

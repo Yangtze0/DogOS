@@ -16,10 +16,13 @@ void load_tr(int tr);
 int load_cr0(void);
 void store_cr0(int cr0);
 void farjmp(int eip, int cs);
+void farcall(int eip, int cs);
+
 void asm_inthandler20(void);
 void asm_inthandler21(void);
 void asm_inthandler27(void);
 void asm_inthandler2c(void);
+void asm_dogos_api(void);
 
 
 /* boot.asm */
@@ -281,6 +284,22 @@ void sheet_make_textbox(struct SHEET *sht, int bx0, int by0, int bxs, int bys, i
 void sheet_putstr(struct SHEET *sht, int bx0, int by0, char *s, int l, int b, int c);
 
 
+/* console.c */
+struct CONSOLE {
+    struct SHEET *sht;
+    int cur_x, cur_y, cur_c, fontc;
+};
+
+void Task_console(void);
+void cons_putchar(int chr, char move);
+void cons_putstr(char *s);
+void cons_newline(void);
+void cons_runcmd(char *cmdline);
+void cmd_help(void);
+void cmd_cls(void);
+void cmd_mem(void);
+
+
 /* dogos.c */
 extern struct KEYBOARDCTL   KEYBOARD;
 extern struct MOUSECTL      MOUSE;
@@ -289,4 +308,4 @@ extern struct SHEETCTL      SHEETS;
 extern struct TIMERCTL      TIMERS;
 extern struct TASKCTL       TASKS;
 
-void Task_console(void);
+void hello(void);

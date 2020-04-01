@@ -30,6 +30,7 @@ void init_idt(void) {
     set_gatedesc(idt + 0x21, (int) asm_inthandler21, 0x0008, AR_INTGATE32);
 	set_gatedesc(idt + 0x27, (int) asm_inthandler27, 0x0008, AR_INTGATE32);
 	set_gatedesc(idt + 0x2c, (int) asm_inthandler2c, 0x0008, AR_INTGATE32);
+    set_gatedesc(idt + 0x30, (int) asm_dogos_api, 0x0008, AR_INTGATE32);
     load_idtr(LIMIT_IDT, (int)idt);
 }
 
