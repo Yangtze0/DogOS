@@ -78,6 +78,15 @@ void task_run(struct TASK *task) {
     TASKS.main->next = task;
 }
 
+void task_end(struct TASK *task) {
+    task->flags = TASK_SLEEP;
+    struct TASK *pre = task;
+    while(pre->next != task) pre = pre->next;
+    pre->next = task->next;
+    mfree_4k((task->tss.esp-4)&0xfffff000, 4096);
+    task->flags = TASK_UNUSE;
+}
+
 void task_switch(void) {
     struct TASK *ts = TASKS.now;
     for(;;) {

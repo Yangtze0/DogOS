@@ -13,9 +13,6 @@
     GLOBAL  _asm_inthandler20, _asm_inthandler21
     GLOBAL  _asm_inthandler27, _asm_inthandler2c
 
-    EXTERN  _dogos_api
-    GLOBAL  _asm_dogos_api
-
 [bits 32]
 
 _io_hlt:                ;   void io_hlt(void);
@@ -153,13 +150,4 @@ _asm_inthandler2c:
     popad
     pop ds
     pop es
-    iretd
-
-_asm_dogos_api:         ;   int 0x30
-    sti
-    pushad
-    pushad
-    call _dogos_api
-    add esp,32
-    popad
     iretd

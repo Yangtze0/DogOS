@@ -66,52 +66,56 @@ struct SHEET *sheet_alloc(int vx0, int vy0, int xs, int ys, unsigned char *buf, 
 
 void sheet_updown(struct SHEET *sht, unsigned char height) {
     unsigned char h, old = sht->height;     // 保存设置前的高度信息
+    if(height == old) return;    
 
-    if(height == old) return;
-    if(height >= SHEETS.top) {
-        if(old) height = SHEETS.top - 1;
-        else height = SHEETS.top;
-        KEYBOARD.fifo.task = sht->task;
-    }
-    sht->height = height;                   // 设定高度
-
-    // 对SHEETS.sht[]重新排序
+    // 对SHEETS.h[]重新排序
     if (height < old) {
         if (height) {                       // 降低图层
-            for (h = old; h > height; h--) {
+            for(h = old; h > height; h--) {
                 SHEETS.h[h] = SHEETS.h[h - 1];
                 SHEETS.h[h]->height = h;
             }
             SHEETS.h[height] = sht;
+            sht->height = height;
             sheet_refreshmap(height, sht->vx0, sht->vy0, sht->xs, sht->ys);
             sheet_refreshsub(height, old, sht->vx0, sht->vy0, sht->xs, sht->ys);
-        } else {                            // 隐藏图层
-            for (h = old; h < SHEETS.top; h++) {
+        } else {                            // 隐藏/清除图层
+            for(h = old; h < SHEETS.top; h++) {
                 SHEETS.h[h] = SHEETS.h[h + 1];
                 SHEETS.h[h]->height = h;
             }
             SHEETS.top--;
+            mfree_4k((unsigned long)sht->buf, sht->xs*sht->ys);
+            sht->flags = 0;
             sheet_refreshmap(0, sht->vx0, sht->vy0, sht->xs, sht->ys);
-            sheet_refreshsub(0, old-1, sht->vx0, sht->vy0, sht->xs, sht->ys);
+            sheet_refreshsub(0, old-1, 0, 0, SHEETS.vxs, SHEETS.vys);
         }
     } else {
         if (old) {                          // 提升图层
+            if(height > SHEETS.top - 1) height = SHEETS.top - 1;
             for (h = old; h < height; h++) {
                 SHEETS.h[h] = SHEETS.h[h + 1];
                 SHEETS.h[h]->height = h;
             }
             SHEETS.h[height] = sht;
+            sht->height = height;
+            sheet_refreshmap(old, 0, 0, SHEETS.vxs, SHEETS.vys);
+            sheet_refreshsub(old, height, 0, 0, SHEETS.vxs, SHEETS.vys);
         } else {                            // 由隐藏转为显示状态
-            for (h = SHEETS.top; h >= height; h--) {
+            if(height > SHEETS.top) height = SHEETS.top;
+            for(h = SHEETS.top; h >= height; h--) {
                 SHEETS.h[h+1] = SHEETS.h[h];
                 SHEETS.h[h+1]->height = h+1;
             }
             SHEETS.h[height] = sht;
+            sht->height = height;
             SHEETS.top++;
+            sheet_refreshmap(height, sht->vx0, sht->vy0, sht->xs, sht->ys);
+            sheet_refreshsub(height-1, height, 0, 0, SHEETS.vxs, SHEETS.vys);
         }
-        sheet_refreshmap(height, sht->vx0, sht->vy0, sht->xs, sht->ys);
-        sheet_refreshsub(height-1, height, 0, 0, SHEETS.vxs, SHEETS.vys);
     }
+
+    KEYBOARD.fifo.task = SHEETS.h[SHEETS.top-1]->task;
 }
 
 void sheet_refreshmap(int h0, int vx0, int vy0, int xs, int ys) {
@@ -248,8 +252,7 @@ void sheet_make_window(struct SHEET *sht, char *title) {
     for (int y = 0; y < 14; y++) {
         for (int x = 0; x < 16; x++) {
             c = closebtn[y][x];
-            switch (c)
-            {
+            switch (c) {
             case '@':
                 c = COL8_000000;
                 break;

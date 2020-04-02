@@ -22,7 +22,6 @@ void asm_inthandler20(void);
 void asm_inthandler21(void);
 void asm_inthandler27(void);
 void asm_inthandler2c(void);
-void asm_dogos_api(void);
 
 
 /* boot.asm */
@@ -212,6 +211,8 @@ void inthandler20(int *esp);
 
 /* mutitask.c */
 #define ADDR_GDT        0x00010000
+#define AR_DATA32_RW    0x4092
+#define AR_CODE32_ER    0x409a
 #define AR_TSS32        0x0089
 #define MAX_TASKS       100
 #define TASK_GDT0       3
@@ -250,6 +251,7 @@ void set_segmdesc(struct SEGMENT_DESCRIPTOR *sd, unsigned int limit, int base, i
 void init_multitask(struct TASKCTL *mt);
 struct TASK *task_alloc(void);
 void task_run(struct TASK *task);
+void task_end(struct TASK *task);
 void task_switch(void);
 void task_sleep(struct TASK *task);
 void task_start(unsigned long task_entry);
@@ -299,6 +301,9 @@ void cmd_help(void);
 void cmd_cls(void);
 void cmd_mem(void);
 
+// 应用程序
+void Task_win(void);
+
 
 /* dogos.c */
 extern struct KEYBOARDCTL   KEYBOARD;
@@ -307,5 +312,3 @@ extern struct MEMORYCTL     MEMORY;
 extern struct SHEETCTL      SHEETS;
 extern struct TIMERCTL      TIMERS;
 extern struct TASKCTL       TASKS;
-
-void hello(void);

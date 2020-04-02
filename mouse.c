@@ -19,8 +19,7 @@ void init_mouse(struct MOUSECTL *mouse) {
 }
 
 int mouse_decode(struct MOUSE_DEC *mdec, unsigned char dat) {
-    switch (mdec->phase)
-    {
+    switch (mdec->phase) {
     case 0:
         if(dat == 0xfa) mdec->phase = 1;
         return 0;

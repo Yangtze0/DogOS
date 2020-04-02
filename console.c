@@ -5,8 +5,9 @@ struct CONSOLE cons;
 
 void Task_console(void) {
     // 绘制图层
-    cons.sht = sheet_alloc(80, 144, 256, 165, (unsigned char *)malloc_4k(256 * 165), TASKS.now);
+    cons.sht = sheet_alloc(80, 72, 256, 165, (unsigned char *)malloc_4k(256 * 165), TASKS.now);
     sheet_make_window(cons.sht, "console");
+    boxfill(cons.sht->buf, cons.sht->xs, cons.sht->xs-21, 5, cons.sht->xs-5, 19, COL_WIN);
     sheet_make_textbox(cons.sht, 8, 28, 240, 128, COL8_000000);
     cons.cur_x = 8;
     cons.cur_y = 28;
@@ -159,6 +160,8 @@ void cons_runcmd(char *cmdline) {
         cmd_cls();
     } else if(!strcmp(cmdline, "mem")) {    // 内存信息
         cmd_mem();
+    } else if(!strcmp(cmdline, "win")) {    // 窗口程序
+        task_start((unsigned long)&Task_win);
     } else if(cmdline[0]) {                 // 错误指令
         cons.fontc = COL8_FF0000;
         cons_putstr("Bad command. \"h\" for help.");
@@ -167,11 +170,13 @@ void cons_runcmd(char *cmdline) {
 }
 
 void cmd_help(void) {
-    cons_putstr("The supported instructions:");
+    cons_putstr("The supported commands:");
+    cons_newline();
+    cons_putstr("    cls - clean the console.");
     cons_newline();
     cons_putstr("    mem - show memory info.");
     cons_newline();
-    cons_putstr("    cls - clean the console.");
+    cons_putstr("    win - a window with text.");
 }
 
 void cmd_cls(void) {
@@ -190,17 +195,4 @@ void cmd_mem(void) {
     char s[40];
     sprintf(s, "Total:%04dMB, Free:%dKB", MEMORY.total, MEMORY.free*4);
     cons_putstr(s);
-}
-
-void dogos_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax) {
-    switch(edx) {   // 功能号
-    case 1:
-        cons_putchar(eax & 0xff, 1);
-        break;
-    case 2:
-        cons_putstr((char *) ebx);
-        break;
-    default:
-        break;
-    }
 }
