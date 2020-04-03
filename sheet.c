@@ -138,11 +138,22 @@ void sheet_refreshmap(int h0, int vx0, int vy0, int xs, int ys) {
         if (by0 < 0) by0 = 0;
         if (bx1 > sht->xs) bx1 = sht->xs;
         if (by1 > sht->ys) by1 = sht->ys;
-        for (int by = by0; by < by1; by++) {
-            vy = sht->vy0 + by;
-            for (int bx = bx0; bx < bx1; bx++) {
-                vx = sht->vx0 + bx;
-                if (buf[by * sht->xs + bx] != COL_INVISIBLE) {
+        
+        if(sht->height == SHEETS.top) {     // 仅鼠标图层存在透明颜色
+            for (int by = by0; by < by1; by++) {
+                vy = sht->vy0 + by;
+                for (int bx = bx0; bx < bx1; bx++) {
+                    vx = sht->vx0 + bx;
+                    if (buf[by * sht->xs + bx] != COL_INVISIBLE) {
+                        SHEETS.vmap[vy * SHEETS.vxs + vx] = h;
+                    }
+                }
+            }
+        } else {
+            for (int by = by0; by < by1; by++) {
+                vy = sht->vy0 + by;
+                for (int bx = bx0; bx < bx1; bx++) {
+                    vx = sht->vx0 + bx;
                     SHEETS.vmap[vy * SHEETS.vxs + vx] = h;
                 }
             }

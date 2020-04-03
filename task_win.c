@@ -4,7 +4,7 @@
 void Task_win(void) {
     // 绘制图层
     unsigned char *buf_win = (unsigned char *)malloc_4k(160 * 52);
-    struct SHEET *sht_win = sheet_alloc(SHEETS.vxs/2, SHEETS.vys/2, 160, 52, buf_win, TASKS.now);
+    struct SHEET *sht_win = sheet_alloc((SHEETS.vxs-160)/2, (SHEETS.vys-52)/2, 160, 52, buf_win, TASKS.now);
     sheet_make_window(sht_win, "window");
     sheet_make_textbox(sht_win, 8, 28, 144, 16, COL8_FFFFFF);
     sheet_updown(sht_win, SHEETS.top);

@@ -303,6 +303,7 @@ void cmd_mem(void);
 
 // 应用程序
 void Task_win(void);
+void Task_palette(void);
 
 
 /* dogos.c */
