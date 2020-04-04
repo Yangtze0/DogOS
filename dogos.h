@@ -64,7 +64,8 @@ struct BOOTINFO {
 #define MOUSEY          16
 
 void init_palette(void);
-void boxfill(unsigned char *buf, int bxs, int bx0, int by0, int bx1, int by1, unsigned char c);
+void boxfill(unsigned char *buf, int xs, int bx0, int by0, int bx1, int by1, unsigned char c);
+void drawline(unsigned char *buf, int xs, int bx0, int by0, int bx1, int by1, unsigned char c);
 void init_screen(unsigned char *buf, int xs, int ys);
 void init_cursor(unsigned char *buf_mouse);
 void putstr8(unsigned char *buf, int xs, int bx0, int by0, unsigned char c, char *s);
@@ -302,8 +303,8 @@ void cmd_cls(void);
 void cmd_mem(void);
 
 // 应用程序
-void Task_win(void);
 void Task_palette(void);
+void Task_bball(void);
 
 
 /* dogos.c */

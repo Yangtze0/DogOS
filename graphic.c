@@ -42,6 +42,38 @@ void boxfill(unsigned char *buf, int xs, int bx0, int by0, int bx1, int by1, uns
     }
 }
 
+void drawline(unsigned char *buf, int xs, int bx0, int by0, int bx1, int by1, unsigned char c) {
+    int dx = bx1 - bx0, dy = by1 - by0;
+    int x = bx0 << 10, y = by0 << 10;
+    int len;
+
+    if (dx < 0) dx = - dx;
+    if (dy < 0) dy = - dy;
+	if (dx >= dy) {
+        len = dx + 1;
+
+        if (bx0 > bx1) dx = -1024;
+        else dx =  1024;
+
+        if (by0 <= by1) dy = ((by1 - by0 + 1) << 10) / len;
+        else dy = ((by1 - by0 - 1) << 10) / len;
+    } else {
+        len = dy + 1;
+
+        if (by0 > by1) dy = -1024;
+        else dy =  1024;
+
+        if (bx0 <= bx1) dx = ((bx1 - bx0 + 1) << 10) / len;
+        else dx = ((bx1 - bx0 - 1) << 10) / len;
+    }
+
+    for (int i = 0; i < len; i++) {
+        buf[(y >> 10) * xs + (x >> 10)] = c;
+        x += dx;
+        y += dy;
+    }
+}
+
 void init_screen(unsigned char *buf, int xs, int ys) {
     boxfill(buf, xs, 0,     0,     xs,     ys-28,  COL8_008484);
     boxfill(buf, xs, 0,     ys-28, xs,     ys-27,  COL8_C6C6C6);

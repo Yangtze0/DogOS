@@ -23,7 +23,7 @@ default : dogos.img
 
 
 # 基本规则
-OBJS =	dogos.o console.o task_win.o task_palette.o \
+OBJS =	dogos.o console.o task_palette.o task_bball.o \
 		sheet.o graphic.o interrupt.o multitask.o timer.o \
 		fifo.o memory.o mouse.o keyboard.o string.o nasm_func.o myfont.o
 

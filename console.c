@@ -160,10 +160,10 @@ void cons_runcmd(char *cmdline) {
         cmd_cls();
     } else if(!strcmp(cmdline, "mem")) {    // 内存信息
         cmd_mem();
-    } else if(!strcmp(cmdline, "win")) {    // 窗口程序
-        task_start((unsigned long)&Task_win);
     } else if(!strcmp(cmdline, "color")) {  // 调色板程序
         task_start((unsigned long)&Task_palette);
+    } else if(!strcmp(cmdline, "bball")) {  // 画图程序
+        task_start((unsigned long)&Task_bball);
     } else if(cmdline[0]) {                 // 错误指令
         cons.fontc = COL8_FF0000;
         cons_putstr("Bad command. \"h\" for help.");
@@ -178,9 +178,9 @@ void cmd_help(void) {
     cons_newline();
     cons_putstr("    mem - show memory info.");
     cons_newline();
-    cons_putstr("    win - a window with text.");
-    cons_newline();
     cons_putstr("    color - show palette.");
+    cons_newline();
+    cons_putstr("    bball - a beautiful ball.");
 }
 
 void cmd_cls(void) {
