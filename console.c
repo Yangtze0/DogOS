@@ -164,6 +164,8 @@ void cons_runcmd(char *cmdline) {
         task_start((unsigned long)&Task_palette);
     } else if(!strcmp(cmdline, "bball")) {  // 画图程序
         task_start((unsigned long)&Task_bball);
+    } else if(!strcmp(cmdline, "invader")) {// 侵略者游戏
+        task_start((unsigned long)&Task_invader);
     } else if(cmdline[0]) {                 // 错误指令
         cons.fontc = COL8_FF0000;
         cons_putstr("Bad command. \"h\" for help.");
@@ -181,6 +183,8 @@ void cmd_help(void) {
     cons_putstr("    color - show palette.");
     cons_newline();
     cons_putstr("    bball - a beautiful ball.");
+    cons_newline();
+    cons_putstr("    invader - a famous game.");
 }
 
 void cmd_cls(void) {

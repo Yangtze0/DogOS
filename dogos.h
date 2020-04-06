@@ -305,6 +305,7 @@ void cmd_mem(void);
 // 应用程序
 void Task_palette(void);
 void Task_bball(void);
+void Task_invader(void);
 
 
 /* dogos.c */
